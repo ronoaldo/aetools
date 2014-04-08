@@ -29,8 +29,8 @@ type Entity struct {
 	Properties datastore.PropertyList
 }
 
-func LoadFixture(c appengine.Context, r io.Reader) error {
-	entities, err := DecodeFixture(c, r)
+func LoadFixtures(c appengine.Context, r io.Reader) error {
+	entities, err := DecodeEntities(c, r)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func LoadFixture(c appengine.Context, r io.Reader) error {
 	return nil
 }
 
-func DecodeFixture(c appengine.Context, r io.Reader) ([]Entity, error) {
+func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()
 
@@ -90,7 +90,7 @@ func DecodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 	var err error
 
 	if v, ok := m["key"]; ok {
-		e.Key, err = DecodeKeyPath(c, v)
+		e.Key, err = DecodeKey(c, v)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +173,7 @@ func DecodeProperty(k string, v interface{}, e *Entity) error {
 	return nil
 }
 
-func DecodeKeyPath(c appengine.Context, v interface{}) (*datastore.Key, error) {
+func DecodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 	var result, ancestor *datastore.Key
 	p, ok := v.([]interface{})
 	if !ok {

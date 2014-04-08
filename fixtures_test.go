@@ -45,7 +45,7 @@ func TestDecodeFixture(t *testing.T) {
 	}
 	defer c.Close()
 
-	r, err := aetools.DecodeFixture(c, bytes.NewReader(fixture))
+	r, err := aetools.DecodeEntities(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestLoadFixtures(t *testing.T) {
 	}
 	defer c.Close()
 
-	err = aetools.LoadFixture(c, bytes.NewReader(fixture))
+	err = aetools.LoadFixtures(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,8 +90,4 @@ func TestLoadFixtures(t *testing.T) {
 	if p.Birthday != b {
 		t.Errorf("Unexpected p.Birthday: %v, expected %v", p.Birthday, b)
 	}
-}
-
-func TestDumpFixtures() {
-
 }
