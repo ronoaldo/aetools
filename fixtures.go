@@ -30,7 +30,7 @@ type Entity struct {
 }
 
 func LoadFixtures(c appengine.Context, r io.Reader) error {
-	entities, err := DecodeEntities(c, r)
+	entities, err := decodeEntities(c, r)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func LoadFixtures(c appengine.Context, r io.Reader) error {
 	return nil
 }
 
-func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
+func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()
 
@@ -74,7 +74,7 @@ func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 			return nil, ErrInvalidElementType
 		}
 
-		e, err := DecodeEntity(c, m)
+		e, err := decodeEntity(c, m)
 		if err != nil {
 			return nil, err
 		}
@@ -85,12 +85,12 @@ func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	return result, nil
 }
 
-func DecodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {
+func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {
 	var e Entity
 	var err error
 
 	if v, ok := m["key"]; ok {
-		e.Key, err = DecodeKey(c, v)
+		e.Key, err = decodeKey(c, v)
 		if err != nil {
 			return nil, err
 		}
@@ -108,14 +108,14 @@ func DecodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 		case []interface{}:
 			l := v.([]interface{})
 			for _, v := range l {
-				err = DecodeProperty(k, v, &e)
+				err = decodeProperty(k, v, &e)
 				if err != nil {
 					return nil, err
 				}
 				e.Properties[len(e.Properties)-1].Multiple = true
 			}
 		default:
-			err = DecodeProperty(k, v, &e)
+			err = decodeProperty(k, v, &e)
 			if err != nil {
 				return nil, err
 			}
@@ -125,7 +125,7 @@ func DecodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 	return &e, nil
 }
 
-func DecodeProperty(k string, v interface{}, e *Entity) error {
+func decodeProperty(k string, v interface{}, e *Entity) error {
 	var p datastore.Property
 	p.Name = k
 
@@ -141,6 +141,9 @@ func DecodeProperty(k string, v interface{}, e *Entity) error {
 		}
 	case string:
 		p.Value = v.(string)
+
+	case bool:
+		p.Value = v.(bool)
 
 	case map[string]interface{}:
 		// Decode custom type
@@ -165,6 +168,7 @@ func DecodeProperty(k string, v interface{}, e *Entity) error {
 		default:
 			return ErrInvalidPropertiesElement
 		}
+
 	default:
 		return ErrInvalidPropertiesElement
 	}
@@ -173,7 +177,7 @@ func DecodeProperty(k string, v interface{}, e *Entity) error {
 	return nil
 }
 
-func DecodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
+func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 	var result, ancestor *datastore.Key
 	p, ok := v.([]interface{})
 	if !ok {

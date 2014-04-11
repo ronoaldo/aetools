@@ -1,33 +1,33 @@
-package aetools_test
+package aetools
 
 import (
 	"appengine/aetest"
 	"appengine/datastore"
 	"bytes"
-	"ronoaldo.gopkg.net/aetools"
 	"testing"
 	"time"
 )
 
 var fixture = []byte(`[
-	{
-		"key": ["Profile", 123456],
-		"properties": {
-			"name": "Ronoaldo JLP",
-			"description": "This is a long value\nblob string",
-			"height": 175,
-			"birthday": {
-				"type": "date",
-				"value": "1986-07-19 00:00:00.000 -0000"
-			},
-			"tags": [ "a", "b", "c" ]
-		}
-	}, {
-		"key": ["IncompleteProfile", "test@example.com"],
-		"properties" : {
-			"name": "My Name"
-		}
+{
+	"key": ["Profile", 123456],
+	"properties": {
+		"name": "Ronoaldo JLP",
+		"description": "This is a long value\nblob string",
+		"height": 175,
+		"active": true,
+		"birthday": {
+			"type": "date",
+			"value": "1986-07-19 00:00:00.000 -0000"
+		},
+		"tags": [ "a", "b", "c" ]
 	}
+}, {
+	"key": ["IncompleteProfile", "test@example.com"],
+	"properties" : {
+		"name": "My Name"
+	}
+}
 ]`)
 
 type Profile struct {
@@ -36,16 +36,17 @@ type Profile struct {
 	Height      int64     `datastore:"height"`
 	Birthday    time.Time `datastore:"birthday"`
 	Tags        []string  `datastore:"tags"`
+	Active      bool      `datastore:"active"`
 }
 
-func TestDecodeFixture(t *testing.T) {
+func TestDecodeEntities(t *testing.T) {
 	c, err := aetest.NewContext(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	r, err := aetools.DecodeEntities(c, bytes.NewReader(fixture))
+	r, err := decodeEntities(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestLoadFixtures(t *testing.T) {
 	}
 	defer c.Close()
 
-	err = aetools.LoadFixtures(c, bytes.NewReader(fixture))
+	err = LoadFixtures(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}

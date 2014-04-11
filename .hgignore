@@ -1,0 +1,3 @@
+syntax:regexp
+^aetools$
+^aetools.test$
