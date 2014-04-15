@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	// Format used to store and load time.Time objects
 	DateTimeFormat = "2006-01-02 15:04:05.000 -0700"
 )
 
@@ -24,11 +25,15 @@ var (
 	ErrInvalidKeyElement        = errors.New("aetools: element's key field is invalid.")
 )
 
+// Type Entity is a small wrapper around datastore.PropertyList
+// to also hold the a *datastore.Key.
 type Entity struct {
 	Key        *datastore.Key
 	Properties datastore.PropertyList
 }
 
+// Func LoadFixtures load the Json representation of entities from
+// the io.Reader into the Datastore, using the given appengine.Context.
 func LoadFixtures(c appengine.Context, r io.Reader) error {
 	entities, err := decodeEntities(c, r)
 	if err != nil {
