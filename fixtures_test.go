@@ -91,4 +91,13 @@ func TestLoadFixtures(t *testing.T) {
 	if p.Birthday != b {
 		t.Errorf("Unexpected p.Birthday: %v, expected %v", p.Birthday, b)
 	}
+	if len(p.Tags) != 3 {
+		t.Errorf("Unexpected p.Tags length: %v, expected %v", len(p.Tags), 3)
+	}
+	tags := []string{"a", "b", "c"}
+	for i, tag := range p.Tags {
+		if tag != tags[i] {
+			t.Errorf("Unexpected value on p.Tags: %v, expected %v", tags[i], tag)
+		}
+	}
 }

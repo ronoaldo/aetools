@@ -52,24 +52,15 @@ func LoadFixtures(c appengine.Context, r io.Reader) error {
 }
 
 func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
-	d := json.NewDecoder(r)
-	d.UseNumber()
-
-	var f interface{}
-	err := d.Decode(&f)
+	a, err := parseJsonArray(r)
 	if err != nil {
 		return nil, err
 	}
 
-	a, ok := f.([]interface{})
-	if !ok {
-		return nil, ErrInvalidRootElement
-	}
-
 	result := make([]Entity, 0)
 
-	for _, f := range a {
-		m, ok := f.(map[string]interface{})
+	for _, i := range a {
+		m, ok := i.(map[string]interface{})
 		if !ok {
 			return nil, ErrInvalidElementType
 		}
@@ -83,6 +74,26 @@ func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	}
 
 	return result, nil
+}
+
+func parseJsonArray(r io.Reader) ([]interface{}, error) {
+	d := json.NewDecoder(r)
+	d.UseNumber()
+
+	//Generic decode into an empty interface
+	var i interface{}
+	err := d.Decode(&i)
+	if err != nil {
+		return nil, err
+	}
+
+	//Chek casting to array of interfaces, so we make sure the Json
+	//is a list of entities.
+	a, ok := i.([]interface{})
+	if !ok {
+		return nil, ErrInvalidRootElement
+	}
+	return a, nil
 }
 
 func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {

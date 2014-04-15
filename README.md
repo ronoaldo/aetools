@@ -7,12 +7,21 @@ application.
 
 Disclaimer: "This package API is under developemnt and is subject to change!"
 
+## Requires AppEngine Go SDK
+
+To get and build this tool you need the `goapp` command available in your PATH:
+
+	goapp get ronoaldo.gopkg.net/aetools
+
+This will download and compile the package so you can use it in your AppEngine
+app.
+
 ## Datastore Helpers
 
 The aetools package contains the LoadFixtures and ExportFixtures helper
 functions, that allows you to load sample data from files and store them in the
 Datastore. This can be done using one of aetest.NewContext(),
-appengine.NewContext() or remote_api.NewContext() return values. This means that
+appengine.NewContext() or remote\_api.NewContext() return values. This means that
 the methods should work locally, in production, or when setting up your app via
 Remote API.
 
