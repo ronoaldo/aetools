@@ -13,26 +13,31 @@ import (
 )
 
 const (
-	// Format used to store and load time.Time objects
+	// DateTimeFormat is used to store and load time.Time objects
 	DateTimeFormat = "2006-01-02 15:04:05.000 -0700"
 )
 
 var (
-	ErrInvalidRootElement       = errors.New("aetools: root object is not an array.")
-	ErrInvalidElementType       = errors.New("aetools: element is not a json object.")
-	ErrInvalidPropertiesElement = errors.New("aetools: element's properties field is invalid.")
-	ErrNoKeyElement             = errors.New("aetools: element's key field is not present.")
-	ErrInvalidKeyElement        = errors.New("aetools: element's key field is invalid.")
+	// ErrInvalidRootElement is returned when the root element is not a valid JSON Array.
+	ErrInvalidRootElement = errors.New("aetools: root object is not an array")
+	// ErrInvalidElementType is retunred when the element is not a JSON Object.
+	ErrInvalidElementType = errors.New("aetools: element is not a JSON object")
+	// ErrInvalidPropertiesElement is returned when the field to be decoded is not valid.
+	ErrInvalidPropertiesElement = errors.New("aetools: element's properties field is invalid")
+	// ErrNoKeyElement is returned for an entity with missing key information.
+	ErrNoKeyElement = errors.New("aetools: element's key field is not present")
+	// ErrInvalidKeyElement is returned when the key is not properly encoded.
+	ErrInvalidKeyElement = errors.New("aetools: element's key field is invalid")
 )
 
-// Type Entity is a small wrapper around datastore.PropertyList
+// Entity is a small wrapper around datastore.PropertyList
 // to also hold the a *datastore.Key.
 type Entity struct {
 	Key        *datastore.Key
 	Properties datastore.PropertyList
 }
 
-// Func LoadFixtures load the Json representation of entities from
+// LoadFixtures load the Json representation of entities from
 // the io.Reader into the Datastore, using the given appengine.Context.
 func LoadFixtures(c appengine.Context, r io.Reader) error {
 	entities, err := decodeEntities(c, r)
@@ -57,12 +62,12 @@ func LoadFixtures(c appengine.Context, r io.Reader) error {
 }
 
 func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
-	a, err := parseJsonArray(r)
+	a, err := parseJSONArray(r)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]Entity, 0)
+	var result []Entity
 
 	for _, i := range a {
 		m, ok := i.(map[string]interface{})
@@ -81,7 +86,7 @@ func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	return result, nil
 }
 
-func parseJsonArray(r io.Reader) ([]interface{}, error) {
+func parseJSONArray(r io.Reader) ([]interface{}, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()
 
@@ -209,11 +214,11 @@ func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 		case json.Number:
 			n, err := id.(json.Number).Int64()
 			if err != nil {
-				return nil, invalidIdError(id)
+				return nil, invalidIDError(id)
 			}
 			result = datastore.NewKey(c, kind, "", n, ancestor)
 		default:
-			return nil, invalidIdError(id)
+			return nil, invalidIDError(id)
 		}
 
 		ancestor = result
@@ -223,6 +228,6 @@ func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 	return result, nil
 }
 
-func invalidIdError(id interface{}) error {
-	return errors.New(fmt.Sprintf("aetest: invalid key id/name '%v' (type %T)", id))
+func invalidIDError(id interface{}) error {
+	return fmt.Errorf("aetest: invalid key id/name '%v' (type %T)", id)
 }
