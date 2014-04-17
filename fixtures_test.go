@@ -10,23 +10,23 @@ import (
 
 var fixture = []byte(`[
 {
-	"key": ["Profile", 123456],
-	"properties": {
-		"name": "Ronoaldo JLP",
-		"description": "This is a long value\nblob string",
-		"height": 175,
-		"active": true,
-		"birthday": {
-			"type": "date",
-			"value": "1986-07-19 00:00:00.000 -0000"
-		},
-		"tags": [ "a", "b", "c" ]
-	}
+	"__key__": ["Profile", 123456],
+	"name": "Ronoaldo JLP",
+	"height": 175,
+	"active": true,
+	"birthday": {
+		"type": "date",
+		"value": "1986-07-19 00:00:00.000 -0000"
+	},
+	"description": "This is a long value\nblob string",
+	"htmlDesc": {
+		"unindexed": true,
+		"value": "<h1>This is an awesome, unindexed description"
+	},
+	"tags": [ "a", "b", "c" ]
 }, {
-	"key": ["IncompleteProfile", "test@example.com"],
-	"properties" : {
-		"name": "My Name"
-	}
+	"__key__": ["IncompleteProfile", "test@example.com"],
+	"name": "My Name"
 }
 ]`)
 
@@ -37,6 +37,7 @@ type Profile struct {
 	Birthday    time.Time `datastore:"birthday"`
 	Tags        []string  `datastore:"tags"`
 	Active      bool      `datastore:"active"`
+	HtmlDesc    string    `datastore:"htmlDesc"`
 }
 
 func TestDecodeEntities(t *testing.T) {
@@ -54,6 +55,11 @@ func TestDecodeEntities(t *testing.T) {
 	if len(r) != 2 {
 		t.Errorf("Unexpected entity slice size: %d, expected 2", len(r))
 	}
+
+	t.Logf("Decoded entities:")
+	for i, e := range r {
+		t.Logf("> %d: %#v", i, e)
+	}
 }
 
 func TestLoadFixtures(t *testing.T) {
@@ -63,7 +69,7 @@ func TestLoadFixtures(t *testing.T) {
 	}
 	defer c.Close()
 
-	err = LoadFixtures(c, bytes.NewReader(fixture))
+	err = LoadFixtures(c, bytes.NewReader(fixture), &Options{GetAfterPut: true})
 	if err != nil {
 		t.Fatal(err)
 	}

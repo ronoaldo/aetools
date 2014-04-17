@@ -37,9 +37,24 @@ type Entity struct {
 	Properties datastore.PropertyList
 }
 
+func (e *Entity) Load(c <-chan datastore.Property) error {
+	return e.Properties.Load(c)
+}
+
+func (e *Entity) Save(c chan<- datastore.Property) error {
+	return e.Properties.Save(c)
+}
+
+type Options struct {
+	// GetAfterPut indicates if we must force the Datastore to load
+	// entities to be visible for non-ancestor queries, by issuing a
+	// Get by key.
+	GetAfterPut bool
+}
+
 // LoadFixtures load the Json representation of entities from
 // the io.Reader into the Datastore, using the given appengine.Context.
-func LoadFixtures(c appengine.Context, r io.Reader) error {
+func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
 	entities, err := decodeEntities(c, r)
 	if err != nil {
 		return err
@@ -56,6 +71,14 @@ func LoadFixtures(c appengine.Context, r io.Reader) error {
 	keys, err = datastore.PutMulti(c, keys, values)
 	if err != nil {
 		return err
+	}
+
+	if o.GetAfterPut {
+		l := make([]Entity, len(keys))
+		err := datastore.GetMulti(c, keys, l)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -110,35 +133,28 @@ func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 	var e Entity
 	var err error
 
-	if v, ok := m["key"]; ok {
-		e.Key, err = decodeKey(c, v)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, ErrNoKeyElement
-	}
-
-	prop, ok := m["properties"].(map[string]interface{})
-	if !ok {
-		return nil, ErrInvalidPropertiesElement
-	}
-
-	for k, v := range prop {
-		switch v.(type) {
-		case []interface{}:
-			l := v.([]interface{})
-			for _, v := range l {
+	for k, v := range m {
+		if k == "__key__" {
+			e.Key, err = decodeKey(c, v)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			switch v.(type) {
+			case []interface{}:
+				l := v.([]interface{})
+				for _, v := range l {
+					err = decodeProperty(k, v, &e)
+					if err != nil {
+						return nil, err
+					}
+					e.Properties[len(e.Properties)-1].Multiple = true
+				}
+			default:
 				err = decodeProperty(k, v, &e)
 				if err != nil {
 					return nil, err
 				}
-				e.Properties[len(e.Properties)-1].Multiple = true
-			}
-		default:
-			err = decodeProperty(k, v, &e)
-			if err != nil {
-				return nil, err
 			}
 		}
 	}
@@ -150,6 +166,47 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 	var p datastore.Property
 	p.Name = k
 
+	var err error
+
+	switch v.(type) {
+	// Try to decode property object
+	case map[string]interface{}:
+		// Decode custom type
+		m := v.(map[string]interface{})
+
+		t, ok := m["type"]
+		if !ok {
+			t = "primitive"
+		}
+
+		switch t {
+		case "date":
+			v, ok := m["value"].(string)
+			if !ok {
+				return fmt.Errorf("aetools: error decoding %s as date: value is not string", k)
+			}
+			var dt time.Time
+			dt, err = time.Parse(DateTimeFormat, v)
+			p.Value = dt
+		default:
+			if v, ok := m["value"]; ok {
+				err = decodeJsonPrimitiveValue(v, &p)
+			} else {
+				err = fmt.Errorf("aetools: complex property %s without 'value' attribute", k)
+			}
+		}
+
+	default:
+		err = decodeJsonPrimitiveValue(v, &p)
+	}
+
+	if err == nil {
+		e.Properties = append(e.Properties, p)
+	}
+	return err
+}
+
+func decodeJsonPrimitiveValue(v interface{}, p *datastore.Property) error {
 	switch v.(type) {
 	case json.Number:
 		n := v.(json.Number)
@@ -166,35 +223,9 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 	case bool:
 		p.Value = v.(bool)
 
-	case map[string]interface{}:
-		// Decode custom type
-		m := v.(map[string]interface{})
-
-		k, ok := m["type"].(string)
-		if !ok {
-			return ErrInvalidPropertiesElement
-		}
-
-		switch k {
-		case "date":
-			v, ok := m["value"].(string)
-			if !ok {
-				return ErrInvalidPropertiesElement
-			}
-			t, err := time.Parse(DateTimeFormat, v)
-			if err != nil {
-				return ErrInvalidPropertiesElement
-			}
-			p.Value = t
-		default:
-			return ErrInvalidPropertiesElement
-		}
-
 	default:
-		return ErrInvalidPropertiesElement
+		return fmt.Errorf("Invalid primitive value: %#v", v)
 	}
-
-	e.Properties = append(e.Properties, p)
 	return nil
 }
 
