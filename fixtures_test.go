@@ -80,7 +80,8 @@ func TestLoadFixtures(t *testing.T) {
 	var p Profile
 	err = datastore.Get(c, k, &p)
 	if err != nil {
-		t.Fatal("Unable to load entity by key. LoadFixture failed: %s", err.Error())
+		t.Errorf("Unable to load entity by key. LoadFixture failed: %s", err.Error())
+		t.FailNow()
 	}
 
 	if p.Name != "Ronoaldo JLP" {

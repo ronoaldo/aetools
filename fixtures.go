@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -29,21 +29,6 @@ var (
 	// ErrInvalidKeyElement is returned when the key is not properly encoded.
 	ErrInvalidKeyElement = errors.New("aetools: element's key field is invalid")
 )
-
-// Entity is a small wrapper around datastore.PropertyList
-// to also hold the a *datastore.Key.
-type Entity struct {
-	Key        *datastore.Key
-	Properties datastore.PropertyList
-}
-
-func (e *Entity) Load(c <-chan datastore.Property) error {
-	return e.Properties.Load(c)
-}
-
-func (e *Entity) Save(c chan<- datastore.Property) error {
-	return e.Properties.Save(c)
-}
 
 type Options struct {
 	// GetAfterPut indicates if we must force the Datastore to load
@@ -190,14 +175,14 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 			p.Value = dt
 		default:
 			if v, ok := m["value"]; ok {
-				err = decodeJsonPrimitiveValue(v, &p)
+				err = decodeJSONPrimitiveValue(v, &p)
 			} else {
 				err = fmt.Errorf("aetools: complex property %s without 'value' attribute", k)
 			}
 		}
 
 	default:
-		err = decodeJsonPrimitiveValue(v, &p)
+		err = decodeJSONPrimitiveValue(v, &p)
 	}
 
 	if err == nil {
@@ -206,7 +191,7 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 	return err
 }
 
-func decodeJsonPrimitiveValue(v interface{}, p *datastore.Property) error {
+func decodeJSONPrimitiveValue(v interface{}, p *datastore.Property) error {
 	switch v.(type) {
 	case json.Number:
 		n := v.(json.Number)
@@ -255,10 +240,9 @@ func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 		ancestor = result
 	}
 
-	log.Printf("Decoded key %#v", *result)
 	return result, nil
 }
 
 func invalidIDError(id interface{}) error {
-	return fmt.Errorf("aetest: invalid key id/name '%v' (type %T)", id)
+	return fmt.Errorf("aetest: invalid key id/name '%v' (type %T)", id, reflect.TypeOf(id))
 }
