@@ -4,6 +4,8 @@ import (
 	"appengine/aetest"
 	"appengine/datastore"
 	"bytes"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,6 +40,66 @@ type Profile struct {
 	Tags        []string  `datastore:"tags"`
 	Active      bool      `datastore:"active"`
 	HtmlDesc    string    `datastore:"htmlDesc"`
+}
+
+func TestEncodeEntities(t *testing.T) {
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	parent := datastore.NewKey(c, "Parent", "parent-1", 0, nil)
+
+	entities := make([]Entity, 0, 10)
+	for i := 0; i < 10; i++ {
+		id := i + 1
+
+		k := datastore.NewKey(c, "Test", "", int64(id), nil)
+		if i%2 == 0 {
+			k = datastore.NewKey(c, "Test", "", int64(id), parent)
+		}
+
+		e := Entity{Key: k}
+		e.AddProperty(datastore.Property{
+			Name:  "name",
+			Value: fmt.Sprintf("Test Entity #%d", id),
+		})
+		for j := 0; j < 3; j++ {
+			e.AddProperty(datastore.Property{
+				Name:     "tags",
+				Value:    fmt.Sprintf("tag%d", j),
+				Multiple: true,
+			})
+		}
+		e.AddProperty(datastore.Property{
+			Name:  "active",
+			Value: i%2 == 0,
+		})
+		e.AddProperty(datastore.Property{
+			Name:  "height",
+			Value: i * 10,
+		})
+		entities = append(entities, e)
+	}
+
+	p := encodeKey(entities[0].Key)
+	t.Logf("encodeKey: from %s to %#v", entities[0].Key, p)
+
+	w := new(bytes.Buffer)
+	err = encodeEntities(entities, w)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	json := w.String()
+	t.Logf("JSON encoded entities: %s", json)
+	attrs := []string{"name", "tags", "active", "height"}
+	for _, a := range attrs {
+		if !strings.Contains(json, a) {
+			t.Errorf("Invalid JSON string: missing attribute %s.", a)
+		}
+	}
 }
 
 func TestDecodeEntities(t *testing.T) {

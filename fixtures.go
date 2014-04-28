@@ -69,6 +69,17 @@ func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
 	return nil
 }
 
+// encodeEntities serializes the parameter into a JSON string.
+func encodeEntities(entities []Entity, w io.Writer) error {
+	for i, e := range entities {
+		err := encodeEntity(e, w)
+		if err != nil {
+			return fmt.Errorf("aetools: Unable to encode position %d: %s", i, err.Error())
+		}
+	}
+	return nil
+}
+
 func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	a, err := parseJSONArray(r)
 	if err != nil {
@@ -112,6 +123,15 @@ func parseJSONArray(r io.Reader) ([]interface{}, error) {
 		return nil, ErrInvalidRootElement
 	}
 	return a, nil
+}
+
+func encodeEntity(e Entity, w io.Writer) error {
+	b, err := e.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(b)
+	return err
 }
 
 func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {
@@ -212,6 +232,34 @@ func decodeJSONPrimitiveValue(v interface{}, p *datastore.Property) error {
 		return fmt.Errorf("Invalid primitive value: %#v", v)
 	}
 	return nil
+}
+
+func encodeKey(k *datastore.Key) []interface{} {
+	path := make([]*datastore.Key, 0)
+
+	tmp := k
+	for tmp != nil {
+		path = append(path, tmp)
+		tmp = tmp.Parent()
+	}
+
+	r := make([]interface{}, 0, 2*len(path))
+	for i := len(path) - 1; i >= 0; i-- {
+		tmp = path[i]
+
+		r = append(r, tmp.Kind())
+		if !tmp.Incomplete() {
+			if tmp.StringID() != "" {
+				r = append(r, tmp.StringID())
+			} else {
+				r = append(r, tmp.IntID())
+			}
+		} else {
+			r = append(r, nil)
+		}
+	}
+
+	return r
 }
 
 func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
