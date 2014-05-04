@@ -1,13 +1,7 @@
 package aetools
 
 import (
-	"appengine"
 	"appengine/datastore"
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"time"
 )
 
 // Entity is a small wrapper around datastore.PropertyList
@@ -112,88 +106,4 @@ func (e *Entity) GetBoolProperty(name string) bool {
 	default:
 		return false
 	}
-}
-
-func (e *Entity) MarshalJSON() ([]byte, error) {
-	m := make(map[string]interface{})
-	m["__key__"] = encodeKey(e.Key)
-
-	add := func(multi bool, n string, v interface{}) {
-		if multi {
-			a := m[n].([]interface{})
-			m[n] = append(a, v)
-		} else {
-			m[n] = v
-		}
-	}
-
-	for _, p := range e.Properties {
-		// Check if multi property is consistent so it's safe to a
-		if p.Multiple {
-			if _, ok := m[p.Name]; !ok {
-				m[p.Name] = make([]interface{}, 0)
-			} else {
-				if _, ok := m[p.Name].([]interface{}); !ok {
-					return nil, fmt.Errorf("aetools: %s with invalid Multiple values", p.Name)
-				}
-			}
-		}
-
-		switch p.Value.(type) {
-		case int, int32, int64:
-			if p.NoIndex {
-				add(p.Multiple, p.Name, toMap("int", p.NoIndex, p.Value))
-			} else {
-				add(p.Multiple, p.Name, p.Value)
-			}
-		case float32, float64:
-			if p.NoIndex {
-				add(p.Multiple, p.Name, toMap("float", p.NoIndex, p.Value))
-			} else {
-				add(p.Multiple, p.Name, p.Value)
-			}
-		case string:
-			if p.NoIndex {
-				add(p.Multiple, p.Name, toMap("string", p.NoIndex, p.Value))
-			} else {
-				add(p.Multiple, p.Name, p.Value)
-			}
-		case bool:
-			if p.NoIndex {
-				add(p.Multiple, p.Name, toMap("bool", p.NoIndex, p.Value))
-			} else {
-				add(p.Multiple, p.Name, p.Value)
-			}
-		case *datastore.Key:
-			v := toMap("key", p.NoIndex, encodeKey(p.Value.(*datastore.Key)))
-			add(p.Multiple, p.Name, v)
-		case appengine.BlobKey:
-			v := toMap("blobkey", p.NoIndex, string(p.Value.(appengine.BlobKey)))
-			add(p.Multiple, p.Name, v)
-		case time.Time:
-			s := p.Value.(time.Time).Format(DateTimeFormat)
-			v := toMap("date", p.NoIndex, s)
-			add(p.Multiple, p.Name, v)
-		case []byte:
-			s := base64.URLEncoding.EncodeToString(p.Value.([]byte))
-			v := toMap("blob", p.NoIndex, s)
-			add(p.Multiple, p.Name, v)
-		default:
-			return nil, fmt.Errorf("aetools: invalid property value %s: %#v", p.Name, p.Value)
-		}
-	}
-
-	b := new(bytes.Buffer)
-	enc := json.NewEncoder(b)
-	err := enc.Encode(m)
-
-	return b.Bytes(), err
-}
-
-func toMap(t string, noIndex bool, v interface{}) map[string]interface{} {
-	var m map[string]interface{}
-	m["value"] = v
-	m["type"] = t
-	m["indexed"] = !noIndex
-	return m
 }

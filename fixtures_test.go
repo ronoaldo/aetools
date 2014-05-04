@@ -1,13 +1,14 @@
 package aetools
 
 import (
-	"appengine/aetest"
-	"appengine/datastore"
 	"bytes"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"appengine/aetest"
+	"appengine/datastore"
 )
 
 var fixture = []byte(`[
@@ -28,7 +29,8 @@ var fixture = []byte(`[
 	"tags": [ "a", "b", "c" ]
 }, {
 	"__key__": ["IncompleteProfile", "test@example.com"],
-	"name": "My Name"
+	"name": "My Name",
+	"height": null
 }
 ]`)
 

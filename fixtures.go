@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
-	"time"
 )
 
 const (
@@ -165,130 +163,6 @@ func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 	}
 
 	return &e, nil
-}
-
-func decodeProperty(k string, v interface{}, e *Entity) error {
-	var p datastore.Property
-	p.Name = k
-
-	var err error
-
-	switch v.(type) {
-	// Try to decode property object
-	case map[string]interface{}:
-		// Decode custom type
-		m := v.(map[string]interface{})
-
-		t, ok := m["type"]
-		if !ok {
-			t = "primitive"
-		}
-
-		switch t {
-		case "date":
-			v, ok := m["value"].(string)
-			if !ok {
-				return fmt.Errorf("aetools: error decoding %s as date: value is not string", k)
-			}
-			var dt time.Time
-			dt, err = time.Parse(DateTimeFormat, v)
-			p.Value = dt
-		default:
-			if v, ok := m["value"]; ok {
-				err = decodeJSONPrimitiveValue(v, &p)
-			} else {
-				err = fmt.Errorf("aetools: complex property %s without 'value' attribute", k)
-			}
-		}
-
-	default:
-		err = decodeJSONPrimitiveValue(v, &p)
-	}
-
-	if err == nil {
-		e.Properties = append(e.Properties, p)
-	}
-	return err
-}
-
-func decodeJSONPrimitiveValue(v interface{}, p *datastore.Property) error {
-	switch v.(type) {
-	case json.Number:
-		n := v.(json.Number)
-		if strings.Contains(n.String(), ".") {
-			// float64
-			p.Value, _ = n.Float64()
-		} else {
-			// int64
-			p.Value, _ = n.Int64()
-		}
-	case string:
-		p.Value = v.(string)
-
-	case bool:
-		p.Value = v.(bool)
-
-	default:
-		return fmt.Errorf("Invalid primitive value: %#v", v)
-	}
-	return nil
-}
-
-func encodeKey(k *datastore.Key) []interface{} {
-	path := make([]*datastore.Key, 0)
-
-	tmp := k
-	for tmp != nil {
-		path = append(path, tmp)
-		tmp = tmp.Parent()
-	}
-
-	r := make([]interface{}, 0, 2*len(path))
-	for i := len(path) - 1; i >= 0; i-- {
-		tmp = path[i]
-
-		r = append(r, tmp.Kind())
-		if !tmp.Incomplete() {
-			if tmp.StringID() != "" {
-				r = append(r, tmp.StringID())
-			} else {
-				r = append(r, tmp.IntID())
-			}
-		} else {
-			r = append(r, nil)
-		}
-	}
-
-	return r
-}
-
-func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
-	var result, ancestor *datastore.Key
-	p, ok := v.([]interface{})
-	if !ok {
-		return nil, ErrInvalidKeyElement
-	}
-
-	for i := 0; i < len(p); i += 2 {
-		kind := p[i].(string)
-		id := p[i+1]
-		switch id.(type) {
-		case string:
-			result = datastore.NewKey(c, kind, id.(string), 0, ancestor)
-		case json.Number:
-			n, err := id.(json.Number).Int64()
-			if err != nil {
-				return nil, invalidIDError(id)
-			}
-			result = datastore.NewKey(c, kind, "", n, ancestor)
-		default:
-			return nil, invalidIDError(id)
-		}
-
-		ancestor = result
-	}
-
-	return result, nil
 }
 
 func invalidIDError(id interface{}) error {
