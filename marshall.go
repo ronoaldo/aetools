@@ -178,7 +178,7 @@ func toMap(t string, noIndex bool, v interface{}) map[string]interface{} {
 	return m
 }
 
-func decodeProperty(k string, v interface{}, e *Entity) error {
+func decodeProperty(c appengine.Context, k string, v interface{}, e *Entity) error {
 	var p datastore.Property
 	p.Name = k
 
@@ -196,10 +196,31 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 		}
 
 		switch t {
+		case "key":
+			key, err := decodeKey(c, m["value"])
+			if err != nil {
+				return err
+			}
+			p.Value = key
+		case "blobkey":
+			v, ok := m["value"].(string)
+			if !ok {
+				return newDecodePropertyError(k, "blobkey", v)
+			}
+			p.Value = appengine.BlobKey(v)
+		case "blob":
+			v, ok := m["value"].(string)
+			if !ok {
+				return newDecodePropertyError(k, "date", v)
+			}
+			p.Value, err = base64.URLEncoding.DecodeString(v)
+			if err != nil {
+				return err
+			}
 		case "date":
 			v, ok := m["value"].(string)
 			if !ok {
-				return fmt.Errorf("aetools: error decoding %s as date: value is not string", k)
+				return newDecodePropertyError(k, "date", v)
 			}
 			var dt time.Time
 			dt, err = time.Parse(DateTimeFormat, v)
@@ -220,4 +241,8 @@ func decodeProperty(k string, v interface{}, e *Entity) error {
 		e.Properties = append(e.Properties, p)
 	}
 	return err
+}
+
+func newDecodePropertyError(name, ptype string, raw interface{}) error {
+	return fmt.Errorf("aetools: can't decode %s, value is not %s: %s", name, ptype, raw)
 }

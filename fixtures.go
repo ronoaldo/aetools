@@ -1,13 +1,14 @@
 package aetools
 
 import (
-	"appengine"
-	"appengine/datastore"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"reflect"
+
+	"appengine"
+	"appengine/datastore"
 )
 
 const (
@@ -147,14 +148,14 @@ func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 			case []interface{}:
 				l := v.([]interface{})
 				for _, v := range l {
-					err = decodeProperty(k, v, &e)
+					err = decodeProperty(c, k, v, &e)
 					if err != nil {
 						return nil, err
 					}
 					e.Properties[len(e.Properties)-1].Multiple = true
 				}
 			default:
-				err = decodeProperty(k, v, &e)
+				err = decodeProperty(c, k, v, &e)
 				if err != nil {
 					return nil, err
 				}
