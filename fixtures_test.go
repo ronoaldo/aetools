@@ -7,32 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"appengine"
+
+	"github.com/drhodes/golorem"
+
 	"appengine/aetest"
 	"appengine/datastore"
 )
-
-var fixture = []byte(`[
-{
-	"__key__": ["Profile", 123456],
-	"name": "Ronoaldo JLP",
-	"height": 175,
-	"active": true,
-	"birthday": {
-		"type": "date",
-		"value": "1986-07-19 00:00:00.000 -0000"
-	},
-	"description": "This is a long value\nblob string",
-	"htmlDesc": {
-		"unindexed": true,
-		"value": "<h1>This is an awesome, unindexed description"
-	},
-	"tags": [ "a", "b", "c" ]
-}, {
-	"__key__": ["IncompleteProfile", "test@example.com"],
-	"name": "My Name",
-	"height": null
-}
-]`)
 
 type Profile struct {
 	Name        string    `datastore:"name"`
@@ -42,6 +23,35 @@ type Profile struct {
 	Tags        []string  `datastore:"tags"`
 	Active      bool      `datastore:"active"`
 	HtmlDesc    string    `datastore:"htmlDesc"`
+}
+
+func TestEndToEndTest(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	err = createSampleEntities(c, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := new(bytes.Buffer)
+	err = DumpFixtures(c, w, &DumpOptions{"User", true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Dump output: ", w)
+
+	err = LoadFixtures(c, w, &Options{true})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestEncodeEntities(t *testing.T) {
@@ -171,4 +181,54 @@ func TestLoadFixtures(t *testing.T) {
 			t.Errorf("Unexpected value on p.Tags: %v, expected %v", tags[i], tag)
 		}
 	}
+}
+
+func createSampleEntities(c appengine.Context, size int) error {
+	for i := 1; i <= 10; i++ {
+		k := datastore.NewKey(c, "User", "", int64(i), nil)
+		e := Entity{Key: k}
+		e.AddProperty(datastore.Property{Name: "Title", Value: lorem.Sentence(5, 10)})
+		e.AddProperty(datastore.Property{
+			Name:    "SubTitle",
+			Value:   lorem.Sentence(3, 5),
+			NoIndex: true,
+		})
+		e.AddProperty(datastore.Property{
+			Name:    "Description",
+			Value:   lorem.Paragraph(3, 5),
+			NoIndex: true,
+		})
+		e.AddProperty(datastore.Property{Name: "Size", Value: int64(32)})
+		for j := 0; j < 5; j++ {
+			e.AddProperty(datastore.Property{
+				Name:     "Tags",
+				Value:    lorem.Word(5, 10),
+				Multiple: true,
+			})
+		}
+		e.AddProperty(datastore.Property{Name: "Price", Value: float64(123.45)})
+		for j := 0; j < 10; j++ {
+			e.AddProperty(datastore.Property{
+				Name:     "PriceHistory",
+				Value:    float64(123.45) - float64(j),
+				Multiple: true,
+			})
+		}
+		e.AddProperty(datastore.Property{Name: "Favicon", Value: icon, NoIndex: true})
+		e.AddProperty(datastore.Property{Name: "FaviconSource", Value: blobKey})
+		for j := 0; j < 3; j++ {
+			e.AddProperty(datastore.Property{
+				Name:     "Friends",
+				Value:    datastore.NewKey(c, "Friend", "", int64(j), k),
+				Multiple: true,
+			})
+		}
+
+		k, err := datastore.Put(c, k, &e)
+		if err != nil {
+			return err
+		}
+		_ = datastore.Get(c, k, &e)
+	}
+	return nil
 }

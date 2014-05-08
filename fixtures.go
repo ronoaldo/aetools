@@ -36,6 +36,12 @@ type Options struct {
 	GetAfterPut bool
 }
 
+// DumpOptions are options to configure how the entities are dumped.
+type DumpOptions struct {
+	Kind        string // The entity kind. Defaults to all entities ("").
+	PrettyPrint bool   // If we should pretty print each line, defaults to false.
+}
+
 // LoadFixtures load the Json representation of entities from
 // the io.Reader into the Datastore, using the given appengine.Context.
 func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
@@ -65,6 +71,48 @@ func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
 		}
 	}
 
+	return nil
+}
+
+// DumpFixtures exports all entities, as JSON, writing the results in the
+// specified writer. You can configure how the dump will run by using the
+// DumpOptions parameter.
+func DumpFixtures(c appengine.Context, w io.Writer, o *DumpOptions) error {
+	var (
+		comma  = []byte(",")
+		op_b   = []byte("[")
+		cl_b   = []byte("]")
+		indent = ""
+	)
+
+	w.Write(op_b)
+	count := 0
+	if o.PrettyPrint {
+		indent = "  "
+	}
+
+	q := datastore.NewQuery(o.Kind)
+	for i := q.Run(c); ; {
+		var e Entity
+		k, err := i.Next(&e)
+		e.Key = k
+		if err == datastore.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if count > 1 {
+			w.Write(comma)
+		}
+		b, err := json.MarshalIndent(&e, "", indent)
+		if err != nil {
+			return err
+		}
+		w.Write(b)
+		count++
+	}
+	w.Write(cl_b)
 	return nil
 }
 

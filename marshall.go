@@ -171,7 +171,7 @@ func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
 }
 
 func toMap(t string, noIndex bool, v interface{}) map[string]interface{} {
-	var m map[string]interface{}
+	m := make(map[string]interface{}, 3)
 	m["value"] = v
 	m["type"] = t
 	m["indexed"] = !noIndex
