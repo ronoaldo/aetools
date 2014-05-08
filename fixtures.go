@@ -102,7 +102,7 @@ func DumpFixtures(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		if err != nil {
 			return err
 		}
-		if count > 1 {
+		if count > 0 {
 			w.Write(comma)
 		}
 		b, err := json.MarshalIndent(&e, "", indent)

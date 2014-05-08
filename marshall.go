@@ -195,6 +195,12 @@ func decodeProperty(c appengine.Context, k string, v interface{}, e *Entity) err
 			t = "primitive"
 		}
 
+		if index, ok := m["indexed"]; ok {
+			if i, ok := index.(bool); ok {
+				p.NoIndex = !i
+			}
+		}
+
 		switch t {
 		case "key":
 			key, err := decodeKey(c, m["value"])

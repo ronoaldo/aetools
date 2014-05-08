@@ -184,7 +184,7 @@ func TestLoadFixtures(t *testing.T) {
 }
 
 func createSampleEntities(c appengine.Context, size int) error {
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= size; i++ {
 		k := datastore.NewKey(c, "User", "", int64(i), nil)
 		e := Entity{Key: k}
 		e.AddProperty(datastore.Property{Name: "Title", Value: lorem.Sentence(5, 10)})
@@ -216,7 +216,7 @@ func createSampleEntities(c appengine.Context, size int) error {
 		}
 		e.AddProperty(datastore.Property{Name: "Favicon", Value: icon, NoIndex: true})
 		e.AddProperty(datastore.Property{Name: "FaviconSource", Value: blobKey})
-		for j := 0; j < 3; j++ {
+		for j := 1; j <= 3; j++ {
 			e.AddProperty(datastore.Property{
 				Name:     "Friends",
 				Value:    datastore.NewKey(c, "Friend", "", int64(j), k),
