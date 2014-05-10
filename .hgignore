@@ -2,3 +2,4 @@ syntax:regexp
 ^aetools$
 ^aetools.test$
 .*\.swp$
+^aeremote/aeremote$

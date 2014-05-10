@@ -79,7 +79,15 @@ func (e *Entity) MarshalJSON() ([]byte, error) {
 			v := toMap("blob", p.NoIndex, s)
 			add(p.Multiple, p.Name, v)
 		default:
-			return nil, fmt.Errorf("aetools: invalid property value %s: %#v", p.Name, p.Value)
+			if p.Value != nil {
+				return nil, fmt.Errorf("aetools: invalid property value %s: %#v", p.Name, p.Value)
+			}
+
+			if p.NoIndex {
+				add(p.Multiple, p.Name, toMap("", p.NoIndex, p.Value))
+			} else {
+				add(p.Multiple, p.Name, p.Value)
+			}
 		}
 	}
 
@@ -175,6 +183,9 @@ func toMap(t string, noIndex bool, v interface{}) map[string]interface{} {
 	m["value"] = v
 	m["type"] = t
 	m["indexed"] = !noIndex
+	if t == "" {
+		delete(m, "type")
+	}
 	return m
 }
 
