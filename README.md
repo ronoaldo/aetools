@@ -1,6 +1,7 @@
 # aetools
 
 [![GoDoc](https://godoc.org/ronoaldo.gopkg.net/aetools?status.png)](https://godoc.org/ronoaldo.gopkg.net/aetools)
+[![Build Status](https://drone.io/bitbucket.org/ronoaldo/aetools/status.png)](https://drone.io/bitbucket.org/ronoaldo/aetools/latest)
 
     import "ronoaldo.gopkg.net/aetools"
 
@@ -11,7 +12,9 @@ Disclaimer: _This package API is under developemnt and is subject to change!_
 
 ## Installation
 
-To get and build this tool you need the `goapp` command available in your PATH:
+You need the Google AppEngine Go SDK to build this project. To get and build
+this tool you need the `goapp` command available in your PATH, so you can fetch
+this package using:
 
 	goapp get ronoaldo.gopkg.net/aetools
 
