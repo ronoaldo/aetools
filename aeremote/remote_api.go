@@ -26,14 +26,16 @@ func newClient() (*http.Client, error) {
 		log.Printf("Using cookies from %s", cookie)
 		b, err := ioutil.ReadFile(cookie)
 		if err != nil {
-			log.Fatal(err)
+			log.Print("Unable to load cookie file: %s", err.Error())
 		}
-		cs := make([]*http.Cookie, 0)
-		err = json.Unmarshal(b, &cs)
-		if err != nil {
-			log.Fatal(err)
+		if err == nil {
+			cs := make([]*http.Cookie, 0)
+			err = json.Unmarshal(b, &cs)
+			if err != nil {
+				log.Fatal(err)
+			}
+			jar.SetCookies(u, cs)
 		}
-		jar.SetCookies(u, cs)
 	}
 
 	client := &http.Client{
