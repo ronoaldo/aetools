@@ -148,15 +148,7 @@ func decodeKey(k string) *datastore.Key {
 	return key
 }
 
-// IngestToBigQuery takes an aetools.Entity, and ingest it's JSON representation
-// into the configured BigQuery table, via streaming.
-func IngestToBigQuery(c appengine.Context, e *aetools.Entity) error {
-	j, _ := e.MarshalJSON()
-	c.Debugf("Ingested %s", j)
-	return nil
-}
-
-// ScheduleSync is a function that schedules a new iteration of SynSyncEntityHandler,
+// ScheduleSync is a function that schedules a new iteration of SyncEntityHandler,
 // using the configured task queue.
 var ScheduleSync = func(c appengine.Context, kstart, kend *datastore.Key) {
 	c.Debugf("Reschedule from %s to %s", kstart, kend)

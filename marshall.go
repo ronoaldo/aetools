@@ -15,6 +15,20 @@ import (
 // MarshalJSON implements the json.Marshaller interface by dumping
 // the entity key and properties.
 func (e *Entity) MarshalJSON() ([]byte, error) {
+	m, err := e.Map()
+	if err != nil {
+		return nil, err
+	}
+	b := new(bytes.Buffer)
+	enc := json.NewEncoder(b)
+	err = enc.Encode(m)
+	return b.Bytes(), err
+}
+
+// Map converts the entity data into a JSON compatible map.
+// Usefull to manually encode the entity using different
+// marshallers than the JSON built-in.
+func (e *Entity) Map() (map[string]interface{}, error) {
 	m := make(map[string]interface{})
 	m["__key__"] = encodeKey(e.Key)
 
@@ -90,12 +104,7 @@ func (e *Entity) MarshalJSON() ([]byte, error) {
 			}
 		}
 	}
-
-	b := new(bytes.Buffer)
-	enc := json.NewEncoder(b)
-	err := enc.Encode(m)
-
-	return b.Bytes(), err
+	return m, nil
 }
 
 func decodeJSONPrimitiveValue(v interface{}, p *datastore.Property) error {

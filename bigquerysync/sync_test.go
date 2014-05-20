@@ -1,19 +1,14 @@
 package bigquerysync_test
 
 import (
-	"strings"
-
-	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
-	"testing"
-
-	"appengine/aetest"
 	"appengine/datastore"
+	"testing"
 )
 
 func TestSyncKeyRangeWithOpenEnd(t *testing.T) {
-	c := setup(t)
+	c := SetupEnv(t)
 	defer c.Close()
 
 	var kstart, kend *datastore.Key
@@ -29,7 +24,7 @@ func TestSyncKeyRangeWithOpenEnd(t *testing.T) {
 }
 
 func TestSyncExplicitKeyRange(t *testing.T) {
-	c := setup(t)
+	c := SetupEnv(t)
 	defer c.Close()
 
 	kstart := datastore.NewKey(c, "Sample", "", 1, nil)
@@ -45,7 +40,7 @@ func TestSyncExplicitKeyRange(t *testing.T) {
 }
 
 func TestSyncSingleEntity(t *testing.T) {
-	c := setup(t)
+	c := SetupEnv(t)
 	defer c.Close()
 
 	kstart := datastore.NewKey(c, "Sample", "", 2, nil)
@@ -61,7 +56,7 @@ func TestSyncSingleEntity(t *testing.T) {
 }
 
 func TestSyncInvalidKeyIntervals(t *testing.T) {
-	c := setup(t)
+	c := SetupEnv(t)
 	defer c.Close()
 
 	var kstart, kend *datastore.Key
@@ -72,19 +67,4 @@ func TestSyncInvalidKeyIntervals(t *testing.T) {
 	if ingested != 0 {
 		t.Errorf("Ingested %d entities for nil start and end keys", ingested)
 	}
-}
-
-func setup(t *testing.T) aetest.Context {
-	c, err := aetest.NewContext(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = aetools.LoadFixtures(c, strings.NewReader(SampleEntities), &aetools.Options{true})
-	if err != nil {
-		c.Close()
-		t.Fatal(err)
-	}
-
-	return c
 }
