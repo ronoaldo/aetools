@@ -3,15 +3,37 @@
 package bigquerysync
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 
 	"appengine"
+	"appengine/datastore"
 
 	"ronoaldo.gopkg.net/aetools"
-
-	"appengine/datastore"
 )
+
+const (
+	MaxErrorsPerSync = 10
+	BatchSize        = 1000
+)
+
+// Errors collects all errors during the igestion job
+// for reporting
+type Errors []error
+
+func (e Errors) Error() string {
+	b := new(bytes.Buffer)
+	l := len(e)
+	for i, err := range e {
+		b.WriteString(err.Error())
+		if i < l {
+			b.WriteRune(';')
+		}
+	}
+	return b.String()
+}
 
 // SyncEntityHandler syncrhonizes the entities starting from startKey,
 // util endKey, exclusive. If no endKey is specified, the open end results
@@ -33,22 +55,21 @@ func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SyncKeyRange sinchronizes the specified key range using the provided
-// appengine context.
-func SyncKeyRange(c appengine.Context, kstart, kend *datastore.Key) {
-	q := datastore.NewQuery(kstart.Kind())
+// appengine context. The kinds for both kstart and kend must be the same.
+func SyncKeyRange(c appengine.Context, kstart, kend *datastore.Key) (int, error) {
+	var (
+		q, err   = createQuery(kstart, kend)
+		errors   = make(Errors, 0)
+		ingested = 0
+		done     = false
 
-	if kstart.Equal(kend) {
-		q = q.Filter("key =", kstart)
-	} else {
-		q = q.Filter("key >=", kstart)
-		if kend != nil {
-			q = q.Filter("<", kend)
-		}
+		klast *datastore.Key
+	)
+
+	if err != nil {
+		return 0, err
 	}
-	q = q.Order("key").Limit(10000)
 
-	klast := ""
-	done := false
 	for it := q.Run(c); ; {
 		e := new(aetools.Entity)
 
@@ -58,26 +79,58 @@ func SyncKeyRange(c appengine.Context, kstart, kend *datastore.Key) {
 			break
 		}
 		if err != nil {
+			errors = append(errors, err)
 			c.Warningf("Error loading next entity: %s", err.Error())
-			continue
+			break
 		}
 
-		e.Key = key
-		klast = key.Encode()
+		e.Key, klast = key, key
 
 		err = IngestToBigQuery(c, e)
 		if err != nil {
+			errors = append(errors, err)
 			c.Warningf("Error loading ingesting %s into BigQuery: %s", e.Key, err.Error())
+		} else {
+			ingested++
+		}
+
+		if len(errors) > MaxErrorsPerSync {
+			done = true
+			break
 		}
 	}
 
 	if !done {
-		if kend == nil {
-			ScheduleSync(klast, "")
-		} else {
-			ScheduleSync(klast, kend.Encode())
+		ScheduleSync(c, klast, kend)
+	}
+
+	if len(errors) > 0 {
+		return ingested, errors
+	}
+
+	return ingested, nil
+}
+
+// createQuery builds a range query using start and end. It works
+// for [start,end[, [start,nil] and [start,start] intervals. The
+// returned query is sorted by __key__ and limited to BatchSize.
+func createQuery(kstart, kend *datastore.Key) (*datastore.Query, error) {
+	if kstart == nil {
+		return nil, fmt.Errorf("Invalid nil kstart")
+	}
+	q := datastore.NewQuery(kstart.Kind())
+
+	if kstart.Equal(kend) {
+		q = q.Filter("__key__ =", kstart)
+	} else {
+		q = q.Filter("__key__ >=", kstart)
+		if kend != nil {
+			q = q.Filter("__key__ <", kend)
 		}
 	}
+
+	q = q.Order("__key__").Limit(BatchSize)
+	return q, nil
 }
 
 // decodeKey safely decodes the specified key string, returning
@@ -99,12 +152,12 @@ func decodeKey(k string) *datastore.Key {
 // into the configured BigQuery table, via streaming.
 func IngestToBigQuery(c appengine.Context, e *aetools.Entity) error {
 	j, _ := e.MarshalJSON()
-	log.Printf("Ingest %s", j)
+	c.Debugf("Ingested %s", j)
 	return nil
 }
 
 // ScheduleSync is a function that schedules a new iteration of SynSyncEntityHandler,
 // using the configured task queue.
-var ScheduleSync = func(kstart, kend string) {
-	log.Printf("Reschedule from %s to %s", kstart, kend)
+var ScheduleSync = func(c appengine.Context, kstart, kend *datastore.Key) {
+	c.Debugf("Reschedule from %s to %s", kstart, kend)
 }
