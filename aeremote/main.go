@@ -63,7 +63,7 @@ func main() {
 	switch {
 	case dump != "":
 		log.Printf("Dumping entities of kind %s...\n", dump)
-		err = aetools.DumpFixtures(c, os.Stdout, &aetools.DumpOptions{dump, true})
+		err = aetools.DumpFixtures(c, os.Stdout, &aetools.DumpOptions{dump, false})
 		if err != nil {
 			log.Fatal(err)
 		}

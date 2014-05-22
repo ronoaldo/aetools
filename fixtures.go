@@ -82,14 +82,12 @@ func DumpFixtures(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		comma  = []byte(",")
 		op_b   = []byte("[")
 		cl_b   = []byte("]")
-		indent = ""
+		lf_b   = []byte("\n")
+		indent = "  "
 	)
 
 	w.Write(op_b)
 	count := 0
-	if o.PrettyPrint {
-		indent = "  "
-	}
 
 	q := datastore.NewQuery(o.Kind)
 	for i := q.Run(c); ; {
@@ -104,8 +102,14 @@ func DumpFixtures(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		}
 		if count > 0 {
 			w.Write(comma)
+			w.Write(lf_b)
 		}
-		b, err := json.MarshalIndent(&e, "", indent)
+		var b []byte
+		if o.PrettyPrint {
+			b, err = json.MarshalIndent(&e, "", indent)
+		} else {
+			b, err = json.Marshal(&e)
+		}
 		if err != nil {
 			return err
 		}
