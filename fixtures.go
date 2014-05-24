@@ -1,11 +1,13 @@
 package aetools
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 
 	"appengine"
 	"appengine/datastore"
@@ -29,6 +31,12 @@ var (
 	ErrInvalidKeyElement = errors.New("aetools: element's key field is invalid")
 )
 
+var (
+	LoadSync = &Options{
+		GetAfterPut: true,
+	}
+)
+
 type Options struct {
 	// GetAfterPut indicates if we must force the Datastore to load
 	// entities to be visible for non-ancestor queries, by issuing a
@@ -40,6 +48,11 @@ type Options struct {
 type DumpOptions struct {
 	Kind        string // The entity kind. Defaults to all entities ("").
 	PrettyPrint bool   // If we should pretty print each line, defaults to false.
+}
+
+// LoadJSON loads entities from the JSON encoded string.
+func LoadJSON(c appengine.Context, j string, o *Options) error {
+	return LoadFixtures(c, strings.NewReader(j), o)
 }
 
 // LoadFixtures load the Json representation of entities from
@@ -72,6 +85,15 @@ func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
 	}
 
 	return nil
+}
+
+func DumpJSON(c appengine.Context, o *DumpOptions) (string, error) {
+	var w bytes.Buffer
+	err := DumpFixtures(c, &w, o)
+	if err != nil {
+		return "", err
+	}
+	return w.String(), err
 }
 
 // DumpFixtures exports all entities, as JSON, writing the results in the
