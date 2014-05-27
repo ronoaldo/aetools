@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+		<title>aetools - Admin Panel</title>
+		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.1.1/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/assets/style.css">
+	</head>
+	<body>
+		<div class="container">
+			<h1 id="heading">
+				<img src="/assets/logo.png" class="logo" alt=""> AppEngine Admin Tools
+			</h1>
+
+			<div class="row">
+				<div class="col-md-12">
+					<h2 id="bigquerysync">BigQuery Sync</h2>
+				</div>
+			</div>
+
+			<hr />
+			<div class="row">
+				<div class="col-md-12">
+					<h3>Schema</h3>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6">
+					<h4>Generate Schema</h4>
+					<form action="/bq/schema" role="form" class="form">
+						<p>Returns a JSON representation of the schema generated
+						by using the Datastore Statistics:</p>
+						<div class="form-group">
+							<label for="bq-schema-kind">Kind</label>
+							<input type="text" class="form-control" id="bq-schema-kind"  name="kind"/>
+						</div>
+						<button type="submit" class="btn btn-primary">Generate Schema</button>
+					</form>
+				</div>
+				<div class="col-md-6">
+					<h4>Create Table</h4>
+					<form action="/bq/table/new" role="form" class="form">
+						<p>Creates a new table from a specifid kind schema:</p>
+						<div class="form-group">
+							<label for="bq-build-table-project">Project ID</label>
+							<input type="text" class="form-control" id="bq-build-table-project" name="project" />
+						</div>
+						<div class="form-group">
+							<label for="bq-build-table-dataset">Dataset</label>
+							<input type="text" class="form-control" id="bq-build-table-dataset" name="dataset" />
+						</div>
+						<div class="form-group">
+							<label for="bq-build-table-kind">Kind</label>
+							<input type="text" class="form-control" id="bq-build-table-kind" name="kind" />
+						</div>
+						<button type="submit" class="btn btn-primary">Create Table</button>
+					</form>
+				</div>
+			</div>
+
+			<hr />
+			<div class="row">
+				<div class="col-md-12">
+					<h3>Sync</h3>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6">
+					<h4>Sync Kind</h4>
+					<form action="/bq/sync" role="form" class="form">
+						<p>Synchronizes <b>all entities</b> of the specified kind:</p>
+						<div class="form-group">
+							<label for="bq-sync-kind">Kind</label>
+							<input type="text" class="form-control" id="bq-sync-kind" name="kind" />
+						</div>
+						<button type="submit" class="btn btn-primary">Sync Kind</button>
+					</form>
+				</div>
+				<div class="col-md-6">
+					<h4>Sync Key Range</h4>
+					<form action="/bq/sync/range" role="form" class="form">
+						<p>Synchronizes the specified key range. To sync a single entity,
+						just put the same values on start and end. You can leave end open
+						to sync all entities begining from start:</p>
+						<div class="form-group">
+							<label for="bq-sync-range-project">Project ID</label>
+							<input type="text" class="form-control" id="bq-sync-range-project" name="project" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-range-dataset">Dataset</label>
+							<input type="text" class="form-control" id="bq-sync-range-dataset" name="dataset" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-range-start">Start Key</label>
+							<input type="text" class="form-control" id="bq-sync-range-start" name="startKey" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-range-end">End Key</label>
+							<input type="text" class="form-control" id="bq-sync-range-end" name="endKey" />
+						</div>
+						<button type="submit" class="btn btn-primary">Sync Range</button>
+					</form>
+				</div>
+			</div>
+		</div>
+		<div class="container">
+			<hr/>
+			<footer>
+			Source Code <a href="https://bitbucket.org/ronoaldo/aetools">https://bitbucket.org/ronoaldo/aetools</a>
+			</footer>
+		</div>
+
+		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+		<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.1.1/js/bootstrap.min.js"></script>
+	</body>
+</html>

@@ -26,7 +26,7 @@ var datastoreStats = `
 	"composite_index_bytes": 0,
 	"timestamp": {
 		"type": "date",
-		"value": "2014-01-01 10:00:00.000 -0300"
+		"value": "2014-01-01T10:00:00-03:00"
 	}
 },{
 	"__key__": [
@@ -42,7 +42,7 @@ var datastoreStats = `
 	"builtin_index_count": 246,
 	"timestamp": {
 		"type": "date",
-		"value": "2014-01-01 10:00:00.000 -0300"
+		"value": "2014-01-01T10:00:00-03:00"
 	}
 },{
 	"__key__": [
@@ -58,7 +58,7 @@ var datastoreStats = `
 	"builtin_index_count": 123,
 	"timestamp": {
 		"type": "date",
-		"value": "2014-01-01 10:00:00.000 -0300"
+		"value": "2014-01-01T10:00:00-03:00"
 	}
 }]`
 
@@ -120,8 +120,8 @@ func TestInferTableSchema(t *testing.T) {
 	j, _ := json.Marshal(s)
 	t.Logf("Decoded schema: '%s'", string(j))
 
-	if len(s.Fields) != 2 {
-		t.Errorf("Unexpected field len: %d, expected 2", len(s.Fields))
+	if len(s.Fields) != 4 {
+		t.Errorf("Unexpected field len: %d, expected 4", len(s.Fields))
 	}
 	for i, f := range s.Fields {
 		if f.Name == "" {

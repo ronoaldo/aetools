@@ -26,7 +26,7 @@ func newClient() (*http.Client, error) {
 		log.Printf("Using cookies from %s", cookie)
 		b, err := ioutil.ReadFile(cookie)
 		if err != nil {
-			log.Print("Unable to load cookie file: %s", err.Error())
+			log.Printf("Unable to load cookie file: %s", err.Error())
 		}
 		if err == nil {
 			cs := make([]*http.Cookie, 0)

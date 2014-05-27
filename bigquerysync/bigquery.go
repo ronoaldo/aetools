@@ -4,16 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
-	"appengine/datastore"
+	"appengine"
 
 	"code.google.com/p/goauth2/appengine/serviceaccount"
+	"code.google.com/p/google-api-go-client/bigquery/v2"
+	"code.google.com/p/google-api-go-client/googleapi"
 	"ronoaldo.gopkg.net/aetools"
-
-	"appengine"
 )
 
 const (
@@ -28,8 +27,7 @@ const (
 )
 
 var (
-	// InsertAllURL is the URL endpoint where we send data to
-	// the streaming request.
+	// InsertAllURL is the URL endpoint where we send data to the streaming request.
 	InsertAllURL = "https://www.googleapis.com/bigquery/v2/projects/%s/datasets/%s/tables/%s/insertAll"
 )
 
@@ -45,72 +43,133 @@ type InsertAllRequest struct {
 	Rows []InsertRow `json:"rows"`
 }
 
-// BigquerySyncOptions holds the configuration options to use when
-// running the synchronization tool.
-type BigquerySyncOptions struct {
-	ProjectID string
-	DatasetID string
-}
-
 // IngestToBigQuery takes an aetools.Entity, and ingest it's JSON representation
 // into the configured project.
-func IngestToBigQuery(c appengine.Context, e *aetools.Entity) error {
-	row, err := e.Map()
-	if err != nil {
-		return err
+func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*aetools.Entity) error {
+	if len(entities) == 0 {
+		c.Infof("Ignoring ingestion of 0 entities")
+		return nil
 	}
-
-	id := fmt.Sprintf("%s#%d", e.Key.Encode(), time.Now().UnixNano())
 	r := InsertAllRequest{
 		Kind: InsertAllRequestKind,
-		Rows: []InsertRow{
-			InsertRow{
-				InsertID: id,
-				Json:     row,
-			},
-		},
+		Rows: make([]InsertRow, 0, len(entities)),
+	}
+	for _, e := range entities {
+		row, err := entityToRow(e)
+		if err != nil {
+			return err
+		}
+		id := fmt.Sprintf("%s#%d", e.Key.Encode(), time.Now().UnixNano())
+		// The Go API client has a bug on some generic entities, as the JSON row,
+		// so we use a custom payload that is API equivalent.
+		r.Rows = append(r.Rows, InsertRow{InsertID: id, Json: row})
 	}
 	payload, err := json.Marshal(r)
 	if err != nil {
 		return err
 	}
-
-	opts := LoadOptions(c)
-
 	client, err := NewClient(c)
-	url := fmt.Sprintf(InsertAllURL, opts.ProjectID, opts.DatasetID, e.Key.Kind())
-
+	if err != nil {
+		c.Errorf("Error initializing client %v", err)
+		return err
+	}
+	url := fmt.Sprintf(InsertAllURL, project, dataset, entities[0].Key.Kind())
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(payload))
-	defer resp.Body.Close()
-
 	if err != nil {
 		return err
 	}
-
-	if resp.StatusCode != 200 {
-		detail, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("Error loading data into BigQuery: %s (%s)", resp.Status, string(detail))
-	}
-
-	return nil
-}
-
-func LoadOptions(c appengine.Context) BigquerySyncOptions {
-	k := datastore.NewKey(c, BigquerySyncOptionsKind, "default", 0, nil)
-	o := new(BigquerySyncOptions)
-	err := datastore.Get(c, k, o)
+	err = googleapi.CheckResponse(resp)
 	if err != nil {
-		c.Errorf("Unable to load options (%s): %s", k.String(), err.Error())
-		return BigquerySyncOptions{}
+		c.Errorf("Error ingesting %d entities: %v", len(entities), err)
 	}
-
-	return *o
+	return err
 }
 
-var NewClient = func(c appengine.Context) (*http.Client, error) {
+// CreateTableForKind parses the datastore statisticas for a kind name,
+// generates a schema suitable for BigQuery, and then creates a new table
+// using the kind name as identifier, and the provided project and dataset.
+// It returns the new-ly created bigquery.Table and a nil error, or a nil
+// table and the error value generated during the schema parsing, the client
+// configuration or the table call.
+func CreateTableForKind(c appengine.Context, project, dataset, kind string) (*bigquery.Table, error) {
+	schema, err := SchemaForKind(c, kind)
+	if err != nil {
+		return nil, err
+	}
+	client, err := NewClient(c)
+	if err != nil {
+		return nil, err
+	}
+	table := &bigquery.Table{
+		Kind:         "bigquery#table",
+		Description:  fmt.Sprintf("Bigquey table for datastore kind %s", kind),
+		FriendlyName: fmt.Sprintf("%s", kind),
+		Schema:       schema,
+		TableReference: &bigquery.TableReference{
+			ProjectId: project,
+			DatasetId: dataset,
+			TableId:   kind,
+		},
+	}
+	bq, err := bigquery.New(client)
+	return bq.Tables.Insert(project, dataset, table).Do()
+}
+
+// NewClient returns a http.Client, that authenticates all requests using
+// the application Service Account. This is a variable to allow for mocking
+// in unit tests, to use a different service account, or to use a custom
+// OAuth implementation.
+var NewClient func(c appengine.Context) (*http.Client, error) = newServiceAccountClient
+
+// newServiceAccountClient returns a service account authenticated http.Client.
+func newServiceAccountClient(c appengine.Context) (*http.Client, error) {
 	client, err := serviceaccount.NewClient(c, BigqueryScope)
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
+}
+
+// entityToRow converts an aetools.Entity to a map suitable for ingesting
+// into bigquery as a row.
+func entityToRow(e *aetools.Entity) (map[string]interface{}, error) {
+	row, err := e.Map()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range row {
+		var value interface{}
+		var err error = nil
+
+		switch v.(type) {
+		case []interface{}:
+			value, err = marshalField(v)
+		case map[string]interface{}:
+			value = v.(map[string]interface{})["value"]
+		default:
+			value = v
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if k != MakeFieldName(k) {
+			delete(row, k)
+			row[MakeFieldName(k)] = value
+		} else {
+			row[k] = value
+		}
+	}
+	row["__timestamp__"] = time.Now().Format(time.RFC3339)
+	return row, nil
+}
+
+// marshalField serializes the value of a field that is not
+// mappable to BigQuery directly.
+func marshalField(v interface{}) (string, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", nil
+	}
+	return string(b), nil
 }

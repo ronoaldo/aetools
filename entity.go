@@ -5,7 +5,7 @@ import (
 )
 
 // Entity is a small wrapper around datastore.PropertyList
-// to also hold the a *datastore.Key.
+// to also hold a *datastore.Key.
 type Entity struct {
 	Key        *datastore.Key
 	Properties datastore.PropertyList
@@ -23,15 +23,15 @@ func (e *Entity) Save(c chan<- datastore.Property) error {
 	return e.Properties.Save(c)
 }
 
-// AddProperty append p to the Properties attribute.
-func (e *Entity) AddProperty(p datastore.Property) {
+// Add append p to the Properties attribute.
+func (e *Entity) Add(p datastore.Property) {
 	e.Properties = append(e.Properties, p)
 }
 
-// GetProperty returns the property value of the given name.
+// Get returns the property value of the given name.
 // If no property with that name exists, returns nil. It also
 // returns nil if the property Value attribute is nil.
-func (e *Entity) GetProperty(name string) interface{} {
+func (e *Entity) Get(name string) interface{} {
 	for _, p := range e.Properties {
 		if p.Name == name {
 			return p.Value
@@ -40,11 +40,11 @@ func (e *Entity) GetProperty(name string) interface{} {
 	return nil
 }
 
-// GetIntProperty returns the int value of the named property,
+// GetInt returns the int value of the named property,
 // and returns the zero value (0) if the property is not found,
 // if its value is nil or if its type is not int, int32 or int64.
-func (e *Entity) GetIntProperty(name string) int64 {
-	v := e.GetProperty(name)
+func (e *Entity) GetInt(name string) int64 {
+	v := e.Get(name)
 	if v == nil {
 		return 0
 	}
@@ -57,11 +57,11 @@ func (e *Entity) GetIntProperty(name string) int64 {
 	}
 }
 
-// GetFloatProperty returns the string value of the named property,
+// GetFloat returns the string value of the named property,
 // and returns the zero value (0.0) if the property is not found,
 // if its value is nil or if its type is not float32 or float64.
-func (e *Entity) GetFloatProperty(name string) float64 {
-	v := e.GetProperty(name)
+func (e *Entity) GetFloat(name string) float64 {
+	v := e.Get(name)
 	if v == nil {
 		return 0.0
 	}
@@ -74,11 +74,11 @@ func (e *Entity) GetFloatProperty(name string) float64 {
 	}
 }
 
-// GetStringProperty returns the string value of the named property,
+// GetString returns the string value of the named property,
 // and returns the zero value ("") if the property is not found,
 // if its value is nil or if its type is not string.
-func (e *Entity) GetStringProperty(name string) string {
-	v := e.GetProperty(name)
+func (e *Entity) GetString(name string) string {
+	v := e.Get(name)
 	if v == nil {
 		return ""
 	}
@@ -91,11 +91,11 @@ func (e *Entity) GetStringProperty(name string) string {
 	}
 }
 
-// GetBoolProperty returns the string value of the named property,
+// GetBool returns the string value of the named property,
 // and returns the zero value (false) if the property is not found,
 // if its value is nil, or if its type is not bool.
-func (e *Entity) GetBoolProperty(name string) bool {
-	v := e.GetProperty(name)
+func (e *Entity) GetBool(name string) bool {
+	v := e.Get(name)
 	if v == nil {
 		return false
 	}

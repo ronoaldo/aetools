@@ -63,7 +63,7 @@ func main() {
 	switch {
 	case dump != "":
 		log.Printf("Dumping entities of kind %s...\n", dump)
-		err = aetools.DumpFixtures(c, os.Stdout, &aetools.DumpOptions{dump, false})
+		err = aetools.Dump(c, os.Stdout, &aetools.DumpOptions{Kind: dump, PrettyPrint: false})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -75,14 +75,14 @@ func main() {
 				log.Printf("Error opening %s\n", err.Error())
 				continue
 			}
-			err = aetools.LoadFixtures(c, fd, &aetools.Options{true})
+			err = aetools.Load(c, fd, aetools.LoadSync)
 			if err != nil {
 				log.Printf("Error loading fixture %s: %s\n", f, err.Error())
 			}
 			fd.Close()
 		}
 	default:
-		err = aetools.DumpFixtures(c, os.Stdout, &aetools.DumpOptions{StatKind, true})
+		err = aetools.Dump(c, os.Stdout, &aetools.DumpOptions{Kind: StatKind, PrettyPrint: true})
 		if err != nil {
 			log.Fatal(err)
 		}

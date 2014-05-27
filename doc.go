@@ -9,24 +9,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package aetools implements a toolbox to help you manage your
-// Google AppEngine application.
-//
-// Disclaimer: "This package API is under developemnt and is subject to change!"
-//
-// Fixtures
-//
-// The aetools package contains the LoadFixtures and ExportFixtures
-// helper functions, that allows you to load sample data from files
-// and store them in the Datastore. This can be done using one of
-// aetest.NewContext(), appengine.NewContext() or remote_api.NewContext()
-// return values. This means that the methods should work locally,
-// in production, or when setting up your app via Remote API.
-//
-// Fixtures are basically text files that are JSON representations
-// of your datastore Entities. This makes them portable between
-// languages and runtimes, and allows you to create rich test cases.
-// They can also be used as an alternative way to data exporting from
-// AppEngine, to load the results right into Google BigQuery service,
-// or into a MongoDB database.
+/*
+Package aetools helps writting, testing and analysing Google App
+Engine applications.
+
+The aetools package implements a simple API to export the entity data
+from Datastore as a JSON stream, as well as load a JSON stream
+back into the Datastore. This can be used as a simple way to express state
+into a unit test, to backup a development environment state that can be
+shared with team members, or to make quick batch changes to data offline,
+like setting up configuration entities via Remote API.
+
+The goal is to provide both an API and a set of executable tools that uses
+that API, allowing for maximum flexibility.
+
+Load and Dump Data Format
+
+The functions Load, LoadJSON, Dump and DumpJSON operate using JSON data
+that represents datastore entities. Each entity is mapped to a JSON Object,
+where each entity property name is an Object atribute, and each property value
+is the corresponding Object atribute value.
+
+The property value is encoded using a JSON primitive, when possible.
+When the primitives are not sufficient to represent the property value,
+a JSON Object with the attributes "type" and "value" is used. The
+"type" attribute is a Datastore type, and value is a json-primitive
+serialization of that value. For instance, Blobs are encoded as a
+base64 JSON string, and time.Time values are encoded using the
+time.RFC3339 layout, also as strings.
+
+Datastore Keys are aways encoded as a JSON Array that represents
+the Key Path, including ancestors, but without the application ID.
+This is done to allow the entity key to be more readable and to
+be application independent. Currently, they don't support namespaces.
+
+Multiple properties are represented as a JSON Array of values described
+above. Unindexed properties are aways JSON objects with the "indexed"
+attribute set to false.
+
+This format is intended to make use of the JSON types as much as possible,
+so an entity can be easily represented as a text file, suitable for read or
+SCM checkin.
+
+The exported data format can also be used as an alternative way to
+export from Datastore, and then load the results right into other
+service, such as Google BigQuery or MongoDB.
+
+The Web Bundle
+
+The package aetools/bundle contains a sample webapp to help you
+manage and stream datastore entities into BigQuery. The bundle
+uses the aetools/bigquerysync functions to infer an usefull schema
+from datastore statistics, and sync your entity data into BigQuery.
+
+The Remote API CLI
+
+The command aetools/remote_api is a Remote API client that exposes the
+Load and Dump functions to make backup and restore of development environment
+state quick and easy. This tool can also help setting up Q.A. or Production
+apps, but should be used with care.
+
+*/
 package aetools

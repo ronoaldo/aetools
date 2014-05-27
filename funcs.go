@@ -8,6 +8,7 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
@@ -15,7 +16,7 @@ import (
 
 const (
 	// DateTimeFormat is used to store and load time.Time objects
-	DateTimeFormat = "2006-01-02 15:04:05.000 -0700"
+	DateTimeFormat = time.RFC3339
 )
 
 var (
@@ -44,20 +45,26 @@ type Options struct {
 	GetAfterPut bool
 }
 
-// DumpOptions are options to configure how the entities are dumped.
+// DumpOptions configure how the entities are dumped.
 type DumpOptions struct {
 	Kind        string // The entity kind. Defaults to all entities ("").
-	PrettyPrint bool   // If we should pretty print each line, defaults to false.
+	PrettyPrint bool   // If the outuput is pretty printed. Defaults to false.
 }
 
-// LoadJSON loads entities from the JSON encoded string.
-func LoadJSON(c appengine.Context, j string, o *Options) error {
-	return LoadFixtures(c, strings.NewReader(j), o)
+// LoadJSON is a convenient wrapper to call Load using a JSON string in memory,
+// wrapped by a strings.Reader. The error result from Load, if any, is returned.
+func LoadJSON(c appengine.Context, s string, o *Options) error {
+	return Load(c, strings.NewReader(s), o)
 }
 
-// LoadFixtures load the Json representation of entities from
-// the io.Reader into the Datastore, using the given appengine.Context.
-func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
+// Load reads the JSON representation of entities from the io.Reader "r",
+// and stores them in the Datastore using the given appengine.Context.
+// The Options parameter allows you to configure how the dump will work.
+// If there is any parsing erros, improper format, or datastore failures
+// during the process, that error is returned and processing stops. The
+// error may be returned after some entities were loaded: there is no
+// parsing cache.
+func Load(c appengine.Context, r io.Reader, o *Options) error {
 	entities, err := decodeEntities(c, r)
 	if err != nil {
 		return err
@@ -87,19 +94,24 @@ func LoadFixtures(c appengine.Context, r io.Reader, o *Options) error {
 	return nil
 }
 
+// DumpJSON is a convenient wrapper that captures the generated JSON from Dump
+// in memory, and return it as a string. If Dump returns an error, an empty
+// string and the error are returned.
 func DumpJSON(c appengine.Context, o *DumpOptions) (string, error) {
 	var w bytes.Buffer
-	err := DumpFixtures(c, &w, o)
+	err := Dump(c, &w, o)
 	if err != nil {
 		return "", err
 	}
-	return w.String(), err
+	return w.String(), nil
 }
 
-// DumpFixtures exports all entities, as JSON, writing the results in the
-// specified writer. You can configure how the dump will run by using the
-// DumpOptions parameter.
-func DumpFixtures(c appengine.Context, w io.Writer, o *DumpOptions) error {
+// Dump exports entities from the context c using the specified Options o and
+// writing the generated JSON representations to the io.Writer w. You can configure
+// how the dump will run by using the DumpOptions parameter. If there is an error
+// generating the output, or writting to the writer, it is returned. This method
+// may return an error after writting bytes to w: the output is not buffered.
+func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 	var (
 		comma  = []byte(",")
 		op_b   = []byte("[")
@@ -153,6 +165,7 @@ func encodeEntities(entities []Entity, w io.Writer) error {
 	return nil
 }
 
+// decodeEntities deserielizes the parameter from a JSON string
 func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	a, err := parseJSONArray(r)
 	if err != nil {
@@ -178,6 +191,7 @@ func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	return result, nil
 }
 
+// parseJSONArray parses a JSON array and returns it's value.
 func parseJSONArray(r io.Reader) ([]interface{}, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()
@@ -198,6 +212,7 @@ func parseJSONArray(r io.Reader) ([]interface{}, error) {
 	return a, nil
 }
 
+// encodeEntity serializes the given Entity into the provided writer.
 func encodeEntity(e Entity, w io.Writer) error {
 	b, err := e.MarshalJSON()
 	if err != nil {
@@ -207,6 +222,7 @@ func encodeEntity(e Entity, w io.Writer) error {
 	return err
 }
 
+// decodeEntity decodes the map as an Entity struct.
 func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {
 	var e Entity
 	var err error
@@ -240,6 +256,7 @@ func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error
 	return &e, nil
 }
 
+// invalidIDError create an error for an invalid ID type.
 func invalidIDError(id interface{}) error {
 	return fmt.Errorf("aetest: invalid key id/name '%v' (type %T)", id, reflect.TypeOf(id))
 }

@@ -14,7 +14,7 @@ var fixture = []byte(`[
 	"active": true,
 	"birthday": {
 		"type": "date",
-		"value": "1986-07-19 00:00:00.000 -0000"
+		"value": "1986-07-19T00:00:00.000-03:00"
 	},
 	"description": "This is a long value\nblob string",
 	"htmlDesc": {

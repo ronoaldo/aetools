@@ -2,6 +2,9 @@ package bigquerysync
 
 import (
 	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	"code.google.com/p/google-api-go-client/bigquery/v2"
@@ -56,30 +59,26 @@ func SchemaForKind(c appengine.Context, kind string) (*bigquery.TableSchema, err
 	k = datastore.NewKey(c, StatByKindKind, kind, 0, nil)
 	kindStats = new(StatByKind)
 	err = datastore.Get(c, k, kindStats)
-	if err != nil {
+	if err != nil && !missingFieldErr(err) {
 		return nil, fmt.Errorf("no stats for '%s': %s", kind, err.Error())
 	}
 	// Parse fields
 	q := datastore.NewQuery(StatByPropertyKind).
-		Filter("kind_name =", kind).
-		Order("property_name")
+		Filter("kind_name =", kind)
 	for it := q.Run(c); ; {
 		s := new(StatByProperty)
 		k, err = it.Next(s)
 		if err == datastore.Done {
 			break
 		}
-		if err != nil {
+		if err != nil && !missingFieldErr(err) {
 			err := fmt.Errorf("can't load property stats %s: %s", kind, err.Error())
 			return nil, err
 		}
 		if !containsField(&schema, s.Name) {
 			f := new(bigquery.TableFieldSchema)
-			f.Name = s.Name
-			if s.Count > kindStats.Count {
-				// More property values than entities: must be repeated
-				f.Mode = "REPEATED"
-			}
+			f.Name = MakeFieldName(s.Name)
+
 			switch s.Type {
 			case "Blob", "BlobKey", "Category", "Email", "IM", "Key", "Link",
 				"PhoneNumber", "PostalAddress", "Rating", "ShortBlob", "String":
@@ -91,14 +90,50 @@ func SchemaForKind(c appengine.Context, kind string) (*bigquery.TableSchema, err
 			case "Float":
 				f.Type = "FLOAT"
 			case "Integer":
-				f.Type = "Integer"
+				f.Type = "INTEGER"
+			}
+			if s.Count > kindStats.Count {
+				// More property values than entities: must be repeated
+				// Repeated are serialized as json strings
+				f.Type = "STRING"
 			}
 			if f.Type != "" {
 				schema.Fields = append(schema.Fields, f)
 			}
 		}
 	}
+	// Include key
+	schema.Fields = append(schema.Fields, &bigquery.TableFieldSchema{
+		Name: "__key__",
+		Type: "STRING",
+	})
+	schema.Fields = append(schema.Fields, &bigquery.TableFieldSchema{
+		Name: "__timestamp__",
+		Type: "TIMESTAMP",
+	})
+	sort.Sort(byName(schema.Fields))
 	return &schema, nil
+}
+
+// byName implements the sort.Interface ordering schema fields by name.
+type byName []*bigquery.TableFieldSchema
+
+func (b byName) Len() int           { return len(b) }
+func (b byName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b byName) Less(i, j int) bool { return b[i].Name < b[i].Name }
+
+// invalidFieldChars is a regexp to filter out the invalid chars in field names.
+var invalidFieldChars = regexp.MustCompile("[^a-zA-Z0-9_]")
+
+// MakeFieldName returns a string replacing invalid field name chars by "_".
+func MakeFieldName(propName string) string {
+	f := invalidFieldChars.ReplaceAllString(propName, "_")
+	return f
+}
+
+// missingFieldError checks if the given error is a missing struct field error.
+func missingFieldErr(err error) bool {
+	return strings.Contains(err.Error(), "no such struct field")
 }
 
 // containsField Checks if we have a field detected already

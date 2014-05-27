@@ -41,7 +41,7 @@ func SetupEnv(t *testing.T) TestContext {
 		t.Fatal(err)
 	}
 
-	err = aetools.LoadFixtures(c, strings.NewReader(SampleEntities), &aetools.Options{true})
+	err = aetools.Load(c, strings.NewReader(SampleEntities), aetools.LoadSync)
 	if err != nil {
 		c.Close()
 		t.Fatal(err)
@@ -51,6 +51,7 @@ func SetupEnv(t *testing.T) TestContext {
 		b, _ := httputil.DumpRequest(r, true)
 		log.Printf("Received request:\n%s\n", string(b))
 	}))
+
 	// TODO(ronoaldo): enable parallel testing.
 	bigquerysync.InsertAllURL = fmt.Sprintf("%s/%%s/%%s/%%s", s.URL)
 
