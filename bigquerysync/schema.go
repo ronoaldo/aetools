@@ -120,7 +120,7 @@ type byName []*bigquery.TableFieldSchema
 
 func (b byName) Len() int           { return len(b) }
 func (b byName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b byName) Less(i, j int) bool { return b[i].Name < b[i].Name }
+func (b byName) Less(i, j int) bool { return b[i].Name < b[j].Name }
 
 // invalidFieldChars is a regexp to filter out the invalid chars in field names.
 var invalidFieldChars = regexp.MustCompile("[^a-zA-Z0-9_]")
