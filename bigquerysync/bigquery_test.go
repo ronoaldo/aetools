@@ -20,7 +20,7 @@ func TestIngestToBigQuery(t *testing.T) {
 		},
 	}
 
-	err := bigquerysync.IngestToBigQuery(c, e)
+	err := bigquerysync.IngestToBigQuery(c, "project", "dataset", []*aetools.Entity{e})
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
