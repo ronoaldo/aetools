@@ -30,7 +30,7 @@ func (t *testContext) TestServer() *httptest.Server {
 }
 
 func (t *testContext) Close() error {
-	t.Context.Close()
+	defer t.Context.Close()
 	t.server.Close()
 	return nil
 }

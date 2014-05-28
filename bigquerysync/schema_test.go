@@ -111,6 +111,7 @@ func TestInferTableSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 
 	s, err := bigquerysync.SchemaForKind(c, "Account")
