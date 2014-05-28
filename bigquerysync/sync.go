@@ -20,6 +20,10 @@ const (
 	BatchSize        = 500
 )
 
+var (
+	ScatterProperty = "__scatter__"
+)
+
 // Errors collects all errors during the igestion job
 // for reporting
 type Errors []error
@@ -150,12 +154,13 @@ func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
 	sq := datastore.NewQuery(kind).Order("__key__").KeysOnly().Limit(1)
 	it := sq.Run(c)
 	start, err := it.Next(nil)
-	if err == nil {
+	if err != nil || start == nil {
 		// No entities found, return empty range
 		return []KeyRange{}
 	}
+	c.Infof("Found start key %s", start)
 	// Find scatters to build ranges
-	q := datastore.NewQuery(kind).Order("__scatter__").KeysOnly().Limit(rangeLen)
+	q := datastore.NewQuery(kind).Order(ScatterProperty).KeysOnly().Limit(rangeLen)
 	keys := make([]*datastore.Key, 0, rangeLen)
 	for it := q.Run(c); ; {
 		k, err := it.Next(nil)

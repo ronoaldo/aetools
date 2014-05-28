@@ -3,10 +3,16 @@ package bigquerysync_test
 import (
 	"testing"
 
+	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
+	"appengine/aetest"
 	"appengine/datastore"
 )
+
+func init() {
+	bigquerysync.ScatterProperty = "_scatter__"
+}
 
 func TestSyncKeyRangeWithOpenEnd(t *testing.T) {
 	c := SetupEnv(t)
@@ -79,5 +85,81 @@ func TestSyncInvalidKeyIntervals(t *testing.T) {
 	}
 	if last != nil {
 		t.Errorf("Unexpected last %s (expected nil)", last)
+	}
+}
+
+func TestKeyRangeForKind(t *testing.T) {
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	// No entities: empty range
+	ranges := bigquerysync.KeyRangesForKind(c, "RangeTest")
+	if len(ranges) != 0 {
+		t.Errorf("Unexpected ranges returned: %d, expected 0: %#v", len(ranges), ranges)
+	}
+	// Setup datastore - __scatter__ is replaced with _scatter__ for testing
+	aetools.LoadJSON(c, SampleEntities, aetools.LoadSync)
+	// No scatter, single range
+	ranges = bigquerysync.KeyRangesForKind(c, "Sample")
+	if len(ranges) != 1 {
+		t.Errorf("Unexpected ranges without scatters: %v, expected length 1", ranges)
+	} else {
+		if ranges[0].Start == nil {
+			t.Errorf("Unexpected nil start for Sample")
+		} else {
+			if ranges[0].Start.IntID() != 1 || ranges[0].Start.Kind() != "Sample" {
+				t.Errorf("Unexpected start key for Sample: %#v", ranges[0].Start)
+			}
+			if ranges[0].End != nil {
+				t.Errorf("Unexpected end key for Sample: %#v, expected nil", ranges[0].End)
+			}
+		}
+	}
+	// With scatters
+	ranges = bigquerysync.KeyRangesForKind(c, "RangeTest")
+	if len(ranges) != 3 {
+		t.Errorf("Unexpected ranges with scatter: %d, expected 3", len(ranges))
+	} else {
+		// Check for expected ranges
+		expected := []struct {
+			Start int64
+			End   int64
+		}{
+			{1, 3},
+			{3, 5},
+			{5, 0},
+		}
+		for i, e := range expected {
+			r := ranges[i]
+			if r.Start == nil {
+				t.Errorf("Unexpected nil start at range %d", i)
+			} else if r.Start.IntID() != e.Start {
+				t.Errorf("Unexpected start at range %d: %#v, expected %d", i, r.Start.IntID(), e.Start)
+			}
+			if e.End == 0 {
+				if r.End != nil {
+					t.Errorf("Unexpected end at range %d: %#v, expected nil", i, r.End)
+				}
+			} else if r.End == nil {
+				t.Errorf("Unexpected nil end at range %d, expected %d", i, r.End, e.End)
+			} else if r.End.IntID() != e.End {
+				t.Errorf("Unexpected end at range %d: %#v, expected %d", i, r.End, e.End)
+			}
+		}
+		// Check if all entity keys match
+		for i, r := range ranges {
+			if r.Start != nil {
+				if r.Start.Kind() != "RangeTest" {
+					t.Errorf("Unexpected kind at range %d: %s", i, r.Start.Kind())
+				}
+			}
+			if r.End != nil {
+				if r.End.Kind() != "RangeTest" {
+					t.Errorf("Unexpected kind at range %d: %s", i, r.End.Kind())
+				}
+			}
+		}
 	}
 }

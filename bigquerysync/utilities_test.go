@@ -84,5 +84,31 @@ var SampleEntities = `[
 		"__key__": ["Log", "log-entry-2"],
 		"Level": "WARN",
 		"Message": "Sample log message #2"
+	},
+	{
+		"__key__": ["RangeTest", 1],
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 2],
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 3],
+		"_scatter__": 12,
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 4],
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 5],
+		"_scatter__": 1,
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 6],
+		"Data": "range"
 	}
 ]`
