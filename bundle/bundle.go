@@ -112,6 +112,7 @@ func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
 		errorf(c, w, 400, "Invalid parameters: project='%s', dataset='%s', kind='%s'", p, d, k)
 	}
 	ranges := bigquerysync.KeyRangesForKind(c, k)
+	infof(c, w, "Ranges: %v\n", ranges)
 	for _, r := range ranges {
 		scheduleRangeSync(c, w, r.Start, r.End, p, d)
 	}

@@ -28,7 +28,7 @@
 			<div class="row">
 				<div class="col-md-6">
 					<h4>Generate Schema</h4>
-					<form action="/bq/schema" role="form" class="form">
+					<form action="/bq/table/schema" role="form" class="form">
 						<p>Returns a JSON representation of the schema generated
 						by using the Datastore Statistics:</p>
 						<div class="form-group">
@@ -69,8 +69,17 @@
 			<div class="row">
 				<div class="col-md-6">
 					<h4>Sync Kind</h4>
-					<form action="/bq/sync" role="form" class="form">
+					<form action="/bq/sync/kind" role="form" class="form">
 						<p>Synchronizes <b>all entities</b> of the specified kind:</p>
+						<div class="form-group">
+							<label for="bq-sync-project">Project ID</label>
+							<input type="text" class="form-control" id="bq-sync-project" name="project" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-dataset">Dataset</label>
+							<input type="text" class="form-control" id="bq-sync-dataset" name="dataset" />
+						</div>
+
 						<div class="form-group">
 							<label for="bq-sync-kind">Kind</label>
 							<input type="text" class="form-control" id="bq-sync-kind" name="kind" />

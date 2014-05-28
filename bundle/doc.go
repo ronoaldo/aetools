@@ -15,7 +15,7 @@ Package bundle is a self-contained appengine module with aetools.
 The bundle can be deployed using the Google Cloud SDK or the Google AppEngine
 SDK for Go:
 
-	gcloud preview app deploy --project=your-app-id --version=your-bundle-version
+	gcloud preview app deploy --project=your-app-id --version=your-bundle-version app.yaml
 
 If you want this to be outside de default module, you can change the app.yaml
 to specify the desired version.
