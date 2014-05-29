@@ -15,7 +15,7 @@ import (
 
 const (
 	MaxErrorsPerSync = 10
-	BatchSize        = 64
+	BatchSize        = 81
 )
 
 var (
@@ -115,11 +115,20 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 			break
 		}
 	}
-
-	c.Infof("Ingesting %d entities into %s:%s", len(buff), project, dataset)
-	err := IngestToBigQuery(c, project, dataset, buff)
-	if err != nil {
-		errors = append(errors, err)
+	// Due to appengine/urlfetch payload limits, we split the BatchSize in 9-entity
+	// batches
+	for i, j := 0, 9; i < len(buff)+9; i, j = i+9, j+9 {
+		if j > len(buff) {
+			j = len(buff)
+		}
+		if i >= j {
+			break
+		}
+		c.Infof("Ingesting %d entities into %s:%s [%d:%d]", len(buff), project, dataset, i, j)
+		err := IngestToBigQuery(c, project, dataset, buff[i:j])
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 
 	if done {
