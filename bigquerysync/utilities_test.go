@@ -94,21 +94,30 @@ var SampleEntities = `[
 		"Data": "range"
 	},
 	{
-		"__key__": ["RangeTest", 3],
-		"_scatter__": 12,
+		"__key__": ["RangeTest", 30],
+		"_scatter__": 3,
 		"Data": "range"
 	},
 	{
-		"__key__": ["RangeTest", 4],
+		"__key__": ["RangeTest", 40],
 		"Data": "range"
 	},
 	{
-		"__key__": ["RangeTest", 5],
-		"_scatter__": 1,
+		"__key__": ["RangeTest", 50],
+		"_scatter__": 2,
 		"Data": "range"
 	},
 	{
 		"__key__": ["RangeTest", 6],
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 1000],
+		"_scatter__": 1,
+		"Data": "range"
+	},
+	{
+		"__key__": ["RangeTest", 1001],
 		"Data": "range"
 	}
 ]`

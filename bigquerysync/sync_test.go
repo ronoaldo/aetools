@@ -117,20 +117,20 @@ func TestKeyRangeForKind(t *testing.T) {
 			}
 		}
 	}
-	// With scatters
+	// Scattered entities: sorted key ranges expected
 	ranges = bigquerysync.KeyRangesForKind(c, "RangeTest")
-	if len(ranges) != 3 {
+	expected := []struct {
+		Start int64
+		End   int64
+	}{
+		{1, 30},
+		{30, 50},
+		{50, 1000},
+		{1000, 0},
+	}
+	if len(ranges) != len(expected) {
 		t.Errorf("Unexpected ranges with scatter: %d, expected 3", len(ranges))
 	} else {
-		// Check for expected ranges
-		expected := []struct {
-			Start int64
-			End   int64
-		}{
-			{1, 3},
-			{3, 5},
-			{5, 0},
-		}
 		for i, e := range expected {
 			r := ranges[i]
 			if r.Start == nil {
@@ -145,7 +145,7 @@ func TestKeyRangeForKind(t *testing.T) {
 			} else if r.End == nil {
 				t.Errorf("Unexpected nil end at range %d, expected %d", i, r.End, e.End)
 			} else if r.End.IntID() != e.End {
-				t.Errorf("Unexpected end at range %d: %#v, expected %d", i, r.End, e.End)
+				t.Errorf("Unexpected end at range %d: %#v, expected %d", i, r.End.IntID(), e.End)
 			}
 		}
 		// Check if all entity keys match
@@ -160,6 +160,52 @@ func TestKeyRangeForKind(t *testing.T) {
 					t.Errorf("Unexpected kind at range %d: %s", i, r.End.Kind())
 				}
 			}
+		}
+	}
+}
+
+func TestCompareKeys(t *testing.T) {
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	A1 := datastore.NewKey(c, "A", "", 1, nil)
+	A2 := datastore.NewKey(c, "A", "", 2, nil)
+	Aa := datastore.NewKey(c, "A", "a", 0, nil)
+
+	B1 := datastore.NewKey(c, "B", "", 1, A1)
+	B2 := datastore.NewKey(c, "B", "", 2, A1)
+	Ba := datastore.NewKey(c, "B", "a", 0, A1)
+
+	compare := []struct {
+		a *datastore.Key
+		b *datastore.Key
+		r int
+	}{
+		{A1, A1, 0},
+		{A1, A2, -1},
+		{A2, A1, 1},
+
+		{A1, Aa, -1},
+		{Aa, A1, 1},
+		{Aa, Aa, 0},
+
+		{A1, B1, -1},
+		{B1, A1, 1},
+		{B1, B1, 0},
+
+		{B1, B2, -1},
+		{B2, B1, 1},
+		{B2, B2, 0},
+		{Ba, Ba, 0},
+	}
+
+	for _, exp := range compare {
+		r := bigquerysync.CompareKeys(exp.a, exp.b)
+		if r != exp.r {
+			t.Errorf("Error in CompareKey(%v, %v) = %d, expected %d", exp.a, exp.b, r, exp.r)
 		}
 	}
 }

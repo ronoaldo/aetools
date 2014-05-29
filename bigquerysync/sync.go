@@ -140,12 +140,101 @@ type KeyRange struct {
 	End   *datastore.Key
 }
 
+// cmpStr compares two strings returning -1, 0, or 1 if
+// s is less than, equal or grather than other.
+func cmpStr(s, other string) int {
+	if s < other {
+		return -1
+	} else if s > other {
+		return 1
+	}
+	return 0
+}
+
+// cmpInt compares two int64 returning -1, 0, or 1 if i is
+// less than, equal or grather than other.
+func cmpInt(i, other int64) int {
+	if i < other {
+		return -1
+	} else if i > other {
+		return 1
+	}
+	return 0
+}
+
+// cmpKey compares k and other, returning -1, 0 or 1 if k is
+// less than, equal or grather than other. The algorithm doesn't
+// takes into account any ancestors in the two keys. The order
+// of comparision is AppID, Kind, IntID and StringID. Keys with
+// integer identifiers are smaller than string identifiers.
+func cmpKey(k, other *datastore.Key) int {
+	if k == other {
+		return 0
+	}
+	if r := cmpStr(k.AppID(), other.AppID()); r != 0 {
+		return r
+	}
+	if r := cmpStr(k.Kind(), other.Kind()); r != 0 {
+		return r
+	}
+	if k.IntID() != 0 {
+		if other.IntID() == 0 {
+			return -1
+		}
+		return cmpInt(k.IntID(), other.IntID())
+	}
+	if other.IntID() != 0 {
+		return 1
+	}
+	return cmpStr(k.StringID(), other.StringID())
+}
+
+// KeyPath takes a datastore.Key and decomposes its ancestor path
+// as a slice of keys, where the first ancestor is at position 0.
+func KeyPath(k *datastore.Key) []*datastore.Key {
+	path := make([]*datastore.Key, 0)
+	for p := k; p != nil; p = p.Parent() {
+		path = append(path, nil)
+		copy(path[1:], path[0:])
+		path[0] = p
+	}
+	return path
+}
+
+// CompareKeys compares k and other, returning -1, 0, 1 if k is less than
+// equal or grather than other, taking into account the full ancestor path.
+func CompareKeys(k, other *datastore.Key) int {
+	if k == other {
+		return 0
+	}
+
+	thisPath := KeyPath(k)
+	otherPath := KeyPath(other)
+
+	for i, thisKey := range thisPath {
+		if i < len(otherPath) {
+			otherKey := otherPath[i]
+			result := cmpKey(thisKey, otherKey)
+			if result != 0 {
+				return result
+			}
+		} else {
+			return 1
+		}
+	}
+
+	if len(otherPath) > len(thisPath) {
+		return -1
+	}
+	return 0
+}
+
 // byKey implements sort.Interface to sort keys by they path.
 type byKey []*datastore.Key
 
 func (b byKey) Len() int           { return len(b) }
 func (b byKey) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b byKey) Less(i, j int) bool { return b[i].String() < b[j].String() }
+func (b byKey) Less(i, j int) bool { return CompareKeys(b[i], b[j]) == -1 }
 
 func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
 	// TODO(ronoaldo): compute rangeLen using datastore statistics
