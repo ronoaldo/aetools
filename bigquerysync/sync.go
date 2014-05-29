@@ -236,6 +236,8 @@ func (b byKey) Len() int           { return len(b) }
 func (b byKey) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 func (b byKey) Less(i, j int) bool { return CompareKeys(b[i], b[j]) == -1 }
 
+// KeyRangesForKind generates a set of KeyRanges, attempting to make them uniformly
+// distributed by using the __scatter__ property implementation.
 func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
 	// TODO(ronoaldo): compute rangeLen using datastore statistics
 	rangeLen := 64

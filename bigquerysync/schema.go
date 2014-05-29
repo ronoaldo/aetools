@@ -75,9 +75,10 @@ func SchemaForKind(c appengine.Context, kind string) (*bigquery.TableSchema, err
 			err := fmt.Errorf("can't load property stats %s: %s", kind, err.Error())
 			return nil, err
 		}
-		if !containsField(&schema, s.Name) {
+		fName := MakeFieldName(s.Name)
+		if !containsField(&schema, fName) {
 			f := new(bigquery.TableFieldSchema)
-			f.Name = MakeFieldName(s.Name)
+			f.Name = fName
 
 			switch s.Type {
 			case "Blob", "BlobKey", "Category", "Email", "IM", "Key", "Link",
