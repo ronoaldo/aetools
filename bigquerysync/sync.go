@@ -17,7 +17,7 @@ import (
 
 const (
 	MaxErrorsPerSync = 10
-	BatchSize        = 500
+	BatchSize        = 64
 )
 
 var (
