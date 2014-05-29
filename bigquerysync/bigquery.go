@@ -76,6 +76,7 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 	url := fmt.Sprintf(InsertAllURL, project, dataset, entities[0].Key.Kind())
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
+		c.Errorf("Error posting: %v", err)
 		return err
 	}
 	err = googleapi.CheckResponse(resp)

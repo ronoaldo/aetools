@@ -128,6 +128,7 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 		err := IngestToBigQuery(c, project, dataset, buff[i:j])
 		if err != nil {
 			errors = append(errors, err)
+			break
 		}
 	}
 
