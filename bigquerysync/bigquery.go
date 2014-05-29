@@ -9,10 +9,10 @@ import (
 
 	"appengine"
 
-	"code.google.com/p/goauth2/appengine/serviceaccount"
 	"code.google.com/p/google-api-go-client/bigquery/v2"
 	"code.google.com/p/google-api-go-client/googleapi"
 	"ronoaldo.gopkg.net/aetools"
+	"ronoaldo.gopkg.net/aetools/serviceaccount"
 )
 
 const (
