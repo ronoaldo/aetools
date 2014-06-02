@@ -1,19 +1,17 @@
 package bundle
 
 import (
+	"appengine"
+	"appengine/datastore"
+	"appengine/taskqueue"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
-	"strings"
-
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
-
-	"appengine"
-	"appengine/datastore"
-	"appengine/taskqueue"
+	"strings"
 )
 
 func init() {
