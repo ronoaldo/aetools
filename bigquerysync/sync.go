@@ -31,7 +31,7 @@ func (e Errors) Error() string {
 	l := len(e)
 	for i, err := range e {
 		b.WriteString(err.Error())
-		if i < l {
+		if i < l-1 {
 			b.WriteRune(';')
 		}
 	}
@@ -47,7 +47,7 @@ func (e Errors) Error() string {
 // to the end parameter, and eventually reschedule the syncronization:
 //
 //	start, end = startKey(), endKey()
-//	count, start, err := SyncKeyRange(c, proj, dataset, start, end)
+//	count, start, err := SyncKeyRange(c, proj, dataset, start, end, nil)
 //	if err != nil {
 //		// Handle errors
 //	} else if !start.Equal(end) {
@@ -55,22 +55,20 @@ func (e Errors) Error() string {
 //	}
 //
 // The above sample code ilustrates how to handle the results.
-func SyncKeyRange(c appengine.Context, project, dataset string, start, end *datastore.Key) (int, *datastore.Key, error) {
+func SyncKeyRange(c appengine.Context, project, dataset string, start, end *datastore.Key, exclude string) (int, *datastore.Key, error) {
 	if start == nil {
 		return 0, nil, fmt.Errorf("bigquerysync: invalid nil start")
 	}
 	var (
-		errors   = make(Errors, 0)
-		ingested = 0
-		done     = false
-		cur      datastore.Cursor
-		last     *datastore.Key
-		buff     = make([]*aetools.Entity, 0, BatchSize)
+		errors = make(Errors, 0)
+		done   = false
+		cur    datastore.Cursor
+		last   *datastore.Key
+		buff   = make([]*aetools.Entity, 0, BatchSize)
 	)
 	q := createQuery(start, end, cur)
 	for it := q.Run(c); ; {
 		e := new(aetools.Entity)
-
 		// TODO(ronoaldo): make this for loop consume entities
 		// from a goroutine channel, so it is easier to retry and buffer
 		// the goroutine instead of this complex logic.
@@ -100,13 +98,6 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 			c.Warningf("Error fething cursor: %s", err.Error())
 		}
 
-		if err != nil {
-			errors = append(errors, err)
-			c.Warningf("Error loading ingesting %s into BigQuery: %s", e.Key, err.Error())
-		} else {
-			ingested++
-		}
-
 		if len(errors) > MaxErrorsPerSync {
 			done = true
 			break
@@ -125,7 +116,7 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 			break
 		}
 		c.Infof("Ingesting %d entities into %s:%s [%d:%d]", len(buff), project, dataset, i, j)
-		err := IngestToBigQuery(c, project, dataset, buff[i:j])
+		err := IngestToBigQuery(c, project, dataset, buff[i:j], exclude)
 		if err != nil {
 			errors = append(errors, err)
 			break
@@ -137,10 +128,10 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 	}
 
 	if len(errors) > 0 {
-		return ingested, last, errors
+		return len(buff), last, errors
 	}
 
-	return ingested, last, nil
+	return len(buff), last, nil
 }
 
 type KeyRange struct {

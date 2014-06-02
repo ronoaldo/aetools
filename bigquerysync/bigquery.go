@@ -3,8 +3,11 @@ package bigquerysync
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"appengine"
@@ -45,7 +48,7 @@ type InsertAllRequest struct {
 
 // IngestToBigQuery takes an aetools.Entity, and ingest it's JSON representation
 // into the configured project.
-func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*aetools.Entity) error {
+func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*aetools.Entity, exclude string) error {
 	if len(entities) == 0 {
 		c.Infof("Ignoring ingestion of 0 entities")
 		return nil
@@ -55,7 +58,7 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 		Rows: make([]InsertRow, 0, len(entities)),
 	}
 	for _, e := range entities {
-		row, err := entityToRow(e)
+		row, err := entityToRow(c, e, exclude)
 		if err != nil {
 			return err
 		}
@@ -68,6 +71,7 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 	if err != nil {
 		return err
 	}
+	c.Infof("Payload: %s", string(payload))
 	client, err := NewClient(c)
 	if err != nil {
 		c.Errorf("Error initializing client %v", err)
@@ -81,9 +85,30 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 	}
 	err = googleapi.CheckResponse(resp)
 	if err != nil {
-		c.Errorf("Error ingesting %d entities: %v", len(entities), err)
+		c.Errorf("Request error for %d entities: %v", len(entities), err)
+		return err
 	}
-	return err
+	// Decodes the response value to check for insert errors
+	result := new(bigquery.TableDataInsertAllResponse)
+	dec := json.NewDecoder(resp.Body)
+	defer resp.Body.Close()
+	err = dec.Decode(result)
+	if err != nil {
+		return err
+	}
+	if len(result.InsertErrors) != 0 {
+		var buff bytes.Buffer
+		buff.Write([]byte("Insert errors when ingesting:\n"))
+		// Build an error list with the error details when inserting
+		for _, e := range result.InsertErrors {
+			fmt.Fprintf(&buff, "Errors at field index %d: ", e.Index)
+			for _, det := range e.Errors {
+				fmt.Fprintf(&buff, "- %v\n", det)
+			}
+		}
+		return errors.New(buff.String())
+	}
+	return nil
 }
 
 // CreateTableForKind parses the datastore statisticas for a kind name,
@@ -133,20 +158,47 @@ func newServiceAccountClient(c appengine.Context) (*http.Client, error) {
 
 // entityToRow converts an aetools.Entity to a map suitable for ingesting
 // into bigquery as a row.
-func entityToRow(e *aetools.Entity) (map[string]interface{}, error) {
+func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[string]interface{}, error) {
 	row, err := e.Map()
 	if err != nil {
 		return nil, err
 	}
+	exclude = strings.Trim(exclude, " \t\n")
+	if exclude == "" {
+		exclude = "^$"
+	}
+	excludeRe, err := regexp.Compile(exclude)
+	if err != nil {
+		c.Warningf("Unable to parse exclude regexp: %v", err)
+		// Invalid user suplied regexp: exclude none.
+		excludeRe = regexp.MustCompile("^$")
+	}
+
+	c.Debugf("Using exclude regexp: %v", excludeRe)
+
 	for k, v := range row {
+		if excludeRe.MatchString(k) {
+			delete(row, k)
+			continue
+		}
 		var value interface{}
 		var err error = nil
 
-		switch v.(type) {
+		switch v := v.(type) {
 		case []interface{}:
 			value, err = marshalField(v)
 		case map[string]interface{}:
-			value = v.(map[string]interface{})["value"]
+			if t, ok := v["type"]; ok {
+				// Skip blob values
+				if t == "blob" {
+					value = "(blob)"
+				} else {
+					value = v["value"]
+				}
+			} else {
+				// All primitives are valid
+				value = v["value"]
+			}
 		default:
 			value = v
 		}
@@ -167,7 +219,20 @@ func entityToRow(e *aetools.Entity) (map[string]interface{}, error) {
 
 // marshalField serializes the value of a field that is not
 // mappable to BigQuery directly.
-func marshalField(v interface{}) (string, error) {
+func marshalField(v []interface{}) (string, error) {
+	// Skip if item contains blob
+	if len(v) == 0 {
+		return "", nil
+	}
+
+	f := v[0]
+	if f, ok := f.(map[string]interface{}); ok {
+		// If json object, skip if type is blob
+		if f["type"] == "blob" {
+			return "(blob)", nil
+		}
+	}
+
 	b, err := json.Marshal(v)
 	if err != nil {
 		return "", nil

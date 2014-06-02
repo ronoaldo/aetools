@@ -21,7 +21,7 @@ func TestSyncKeyRangeWithOpenEnd(t *testing.T) {
 	var start, end *datastore.Key
 	start = datastore.NewKey(c, "Sample", "", 1, nil)
 
-	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end)
+	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end, "")
 	if err != nil {
 		t.Errorf("Unexpected failure: %s", err.Error())
 	}
@@ -40,7 +40,7 @@ func TestSyncExplicitKeyRange(t *testing.T) {
 	start := datastore.NewKey(c, "Sample", "", 1, nil)
 	end := datastore.NewKey(c, "Sample", "", 3, nil)
 
-	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end)
+	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end, "")
 	if err != nil {
 		t.Errorf("Unexpected failure: %s", err.Error())
 	}
@@ -59,7 +59,7 @@ func TestSyncSingleEntity(t *testing.T) {
 	start := datastore.NewKey(c, "Sample", "", 2, nil)
 	end := datastore.NewKey(c, "Sample", "", 2, nil)
 
-	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end)
+	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end, "")
 	if err != nil {
 		t.Errorf("Unexpected failure: %s", err.Error())
 	}
@@ -76,7 +76,7 @@ func TestSyncInvalidKeyIntervals(t *testing.T) {
 	defer c.Close()
 
 	var start, end *datastore.Key
-	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end)
+	ingested, last, err := bigquerysync.SyncKeyRange(c, "project", "dataset", start, end, "")
 	if err == nil {
 		t.Errorf("Missing error for nil start key")
 	}

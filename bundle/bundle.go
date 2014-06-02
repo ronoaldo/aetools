@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
@@ -25,14 +26,17 @@ func init() {
 	http.HandleFunc("/", AdminHandler)
 }
 
+// AdminHandler displays the bundle administrative page.
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
-	t := Template{resp: w, req: r}
+	t := page{resp: w, req: r}
 	t.Render("admin.html", t.Context())
 }
 
+// SchemaHandler prints the JSON schema for a kind using the method
+// bigquerysync.SchemaForKind.
 func SchemaHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-	t := Template{resp: w, req: r}
+	t := page{resp: w, req: r}
 	schema, err := bigquerysync.SchemaForKind(c, r.FormValue("kind"))
 	if err != nil {
 		t.ServerError(err)
@@ -45,6 +49,10 @@ func SchemaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CreateTableHandler creates a new Bigquery table using the infered schema
+// from the datastore statistics.
+// This handler expects the parameters "project", "dataset" and "kind",
+// and creates a table under "project:dataset.kind".
 func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	p := r.FormValue("project")
@@ -52,46 +60,60 @@ func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 	k := r.FormValue("kind")
 	table, err := bigquerysync.CreateTableForKind(c, p, d, k)
 	if err != nil {
-		t := Template{resp: w, req: r}
+		t := page{resp: w, req: r}
 		t.ServerError(err)
 	} else {
 		w.Write([]byte(fmt.Sprintf(`{"tableId": "%s"}`, table.Id)))
 	}
 }
 
-// SyncEntityHandler syncrhonizes the entities starting from startKey,
-// util endKey, exclusive. If no endKey is specified, the open end results
-// in all entities from startKey beign synced. If startKey and endKey are
-// equal, only a single entity is processed, if found.
+// SyncEntityHandler synchronizes a range of entity keys. This handler
+// expects the same parameters as SyncKindHandler, except for "kind".
+// Instead of kind, you have to specify a mandatory "startKey", and optionally
+// an "endKey".
+//
+// If specified, both startKey and endKey must be URL Encoded complete datastore
+// keys. The start is inclusive and all entities up to end (exclusive) will be
+// synced. If end is empty, or an invalid key, all entities following start are
+// synced, until there is no more entities. If start and end are equal, then only
+// one entity is synced.
+//
+// To optimize memory usage, this handler processes up to bigqueysync.BatchSize
+// entities, and if the query is not done, reschedule itself with the last
+// processed key as start. Also, in order to keep the payload sent to Bigquery
+// under the URLFetch limit, the entities are processed in small chuncks of 9
+// entities.
 func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		start = decodeKey(r.FormValue("startKey"))
 		end   = decodeKey(r.FormValue("endKey"))
 		p     = r.FormValue("project")
 		d     = r.FormValue("dataset")
+		e     = r.FormValue("exclude")
+		q     = r.FormValue("queue")
 		last  *datastore.Key
 	)
 	if start == nil {
-		http.Error(w, "Start key canno't be nil.", http.StatusBadRequest)
+		http.Error(w, "Start key can't be nil.", http.StatusBadRequest)
 		return
 	}
 	if p == "" || d == "" {
 		http.Error(w, fmt.Sprint("Invalid project/dataset: %s/%d", p, d), http.StatusBadRequest)
 		return
 	}
-	tpl := Template{resp: w, req: r}
+	tpl := page{resp: w, req: r}
 	c := appengine.NewContext(r)
 
-	count, last, err := bigquerysync.SyncKeyRange(c, p, d, start, end)
+	count, last, err := bigquerysync.SyncKeyRange(c, p, d, start, end, e)
 	// Error running
 	if err != nil {
-		err := fmt.Errorf("bundle: erro in SyncKeyRange(%s, %s): %d, %s:\n%v", start, end, count, last, err)
+		err := fmt.Errorf("bundle: error in SyncKeyRange(%s, %s): %d, %s:\n%v", start, end, count, last, err)
 		tpl.ServerError(err)
 		return
 	}
 	// Range is not done, let's reschedule from last key.
 	if !last.Equal(end) {
-		err := scheduleRangeSync(c, w, last, end, p, d)
+		err := scheduleRangeSync(c, w, last, end, p, d, e, q)
 		if err != nil {
 			errorf(c, w, 500, "Error in schedule next range: %v", err)
 		}
@@ -101,11 +123,34 @@ func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
 	infof(c, w, "Range synced sucessfully [%s,%s[. %d entities synced.", start, end, count)
 }
 
+// SyncKindHandler spawn task queues for paralell synchronization of all entities
+// in a specific Kind. This handler requires the form parameters "project" and
+// "dataset", as well as the "kind" parameter.
+//
+// The following path synchronizes all entities with kind "Baz", into a
+// table named "Baz", under the dataset "bar" in the "foo" project:
+//
+//	/bq/sync/kind?project=foo&dataset=bar&kind=Baz
+//
+// This handler also supports the "exclude" optional parameter, that is a regular
+// expression to exclude field names. For example, the following path will
+// do the same as the previous one, and also will filter the properties starting
+// with lowercase "a", "b" or that contains "foo" in their names:
+//
+//	/bq/sync/kind?project=foo&dataset=bar&kind=Baz&exclude=^a.*|^b.*|foo
+//
+// This is particulary usefull on large entities, to skip long text fields
+// and keep the request of each row under the Bigquery limit of 20Kb.
+//
+// Finally, the "queue" parameter can be specified to target a specific task
+// queue to run all sync jobs.
 func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		p = r.FormValue("project")
 		d = r.FormValue("dataset")
 		k = r.FormValue("kind")
+		e = r.FormValue("exclude")
+		q = r.FormValue("queue")
 	)
 	c := appengine.NewContext(r)
 	if p == "" || d == "" || k == "" {
@@ -114,18 +159,20 @@ func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
 	ranges := bigquerysync.KeyRangesForKind(c, k)
 	infof(c, w, "Ranges: %v\n", ranges)
 	for _, r := range ranges {
-		scheduleRangeSync(c, w, r.Start, r.End, p, d)
+		scheduleRangeSync(c, w, r.Start, r.End, p, d, e, q)
 	}
 }
 
 // scheduleRangeSync schedule a new run of a key range sync using appengine/taskqueue.
-func scheduleRangeSync(c appengine.Context, w http.ResponseWriter, start, end *datastore.Key, p, d string) error {
-	url := fmt.Sprintf("/bq/sync/range?startKey=%s&endKey=%s&project=%s&dataset=%s", encodeKey(start), encodeKey(end), p, d)
+func scheduleRangeSync(c appengine.Context, w http.ResponseWriter, start, end *datastore.Key, proj, dataset, exclude, queue string) error {
+	queue = strings.Trim(queue, " \n\t")
+	path := "/bq/sync/range?startKey=%s&endKey=%s&project=%s&dataset=%s&exclude=%s&queue=%s"
+	url := fmt.Sprintf(path, encodeKey(start), encodeKey(end), proj, dataset, exclude, queue)
 	t := &taskqueue.Task{
 		Path:   url,
 		Method: "GET",
 	}
-	t, err := taskqueue.Add(c, t, "")
+	t, err := taskqueue.Add(c, t, queue)
 	if err != nil {
 		return err
 	}
@@ -170,15 +217,15 @@ func encodeKey(k *datastore.Key) string {
 	return k.Encode()
 }
 
-// Template is a thin wrapper to render html templates from templates/ directory.
-type Template struct {
+// page is a thin wrapper to render html templates from templates/ directory.
+type page struct {
 	resp http.ResponseWriter
 	req  *http.Request
 
 	ctx map[string]interface{}
 }
 
-func (t *Template) Render(file string, ctx map[string]interface{}) {
+func (t *page) Render(file string, ctx map[string]interface{}) {
 	page := template.Must(template.ParseFiles("templates/" + file))
 	err := page.Execute(t.resp, ctx)
 	if err != nil {
@@ -186,7 +233,7 @@ func (t *Template) Render(file string, ctx map[string]interface{}) {
 	}
 }
 
-func (t *Template) Context() map[string]interface{} {
+func (t *page) Context() map[string]interface{} {
 	if t.ctx == nil {
 		t.ctx = make(map[string]interface{})
 		t.ctx["req"] = t.req
@@ -195,7 +242,7 @@ func (t *Template) Context() map[string]interface{} {
 	return t.ctx
 }
 
-func (t *Template) ServerError(err error) {
+func (t *page) ServerError(err error) {
 	c := appengine.NewContext(t.req)
 	c.Errorf("Error: %s", err.Error())
 	http.Error(t.resp, "Error: "+err.Error(), http.StatusInternalServerError)

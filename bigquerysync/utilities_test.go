@@ -1,18 +1,18 @@
 package bigquerysync_test
 
 import (
+	"appengine/aetest"
+	"code.google.com/p/google-api-go-client/bigquery/v2"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"strings"
-	"testing"
-
 	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
-
-	"appengine/aetest"
+	"strings"
+	"testing"
 )
 
 type TestContext interface {
@@ -50,6 +50,9 @@ func SetupEnv(t *testing.T) TestContext {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := httputil.DumpRequest(r, true)
 		log.Printf("Received request:\n%s\n", string(b))
+		enc := json.NewEncoder(w)
+		err := enc.Encode(&bigquery.TableDataInsertAllResponse{})
+		log.Printf("Error writing response: %v\n", err)
 	}))
 
 	// TODO(ronoaldo): enable parallel testing.
