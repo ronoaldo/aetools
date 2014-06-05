@@ -35,7 +35,12 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 func SchemaHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	t := page{resp: w, req: r}
-	schema, err := bigquerysync.SchemaForKind(c, r.FormValue("kind"))
+	err := r.ParseForm()
+	if err != nil {
+		errorf(c, w, 400, "Invalid request: %v", err)
+		return
+	}
+	schema, err := bigquerysync.SchemaForKind(c, r.Form.Get("kind"))
 	if err != nil {
 		t.ServerError(err)
 		return
@@ -53,9 +58,14 @@ func SchemaHandler(w http.ResponseWriter, r *http.Request) {
 // and creates a table under "project:dataset.kind".
 func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-	p := r.FormValue("project")
-	d := r.FormValue("dataset")
-	k := r.FormValue("kind")
+	err := r.ParseForm()
+	if err != nil {
+		errorf(c, w, 400, "Invalid request: %v", err)
+		return
+	}
+	p := r.Form.Get("project")
+	d := r.Form.Get("dataset")
+	k := r.Form.Get("kind")
 	table, err := bigquerysync.CreateTableForKind(c, p, d, k)
 	if err != nil {
 		t := page{resp: w, req: r}
@@ -82,25 +92,30 @@ func CreateTableHandler(w http.ResponseWriter, r *http.Request) {
 // under the URLFetch limit, the entities are processed in small chuncks of 9
 // entities.
 func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	err := r.ParseForm()
+	if err != nil {
+		errorf(c, w, 400, "Invalid request: %v", err)
+		return
+	}
 	var (
-		start = decodeKey(r.FormValue("startKey"))
-		end   = decodeKey(r.FormValue("endKey"))
-		p     = r.FormValue("project")
-		d     = r.FormValue("dataset")
-		e     = r.FormValue("exclude")
-		q     = r.FormValue("queue")
+		start = decodeKey(r.Form.Get("startKey"))
+		end   = decodeKey(r.Form.Get("endKey"))
+		p     = r.Form.Get("project")
+		d     = r.Form.Get("dataset")
+		e     = r.Form.Get("exclude")
+		q     = r.Form.Get("queue")
 		last  *datastore.Key
 	)
 	if start == nil {
-		http.Error(w, "Start key can't be nil.", http.StatusBadRequest)
+		errorf(c, w, http.StatusBadRequest, "Start key can't be nil.")
 		return
 	}
 	if p == "" || d == "" {
-		http.Error(w, fmt.Sprint("Invalid project/dataset: %s/%d", p, d), http.StatusBadRequest)
+		errorf(c, w, http.StatusBadRequest, "Invalid project/dataset: %s/%d", p, d)
 		return
 	}
 	tpl := page{resp: w, req: r}
-	c := appengine.NewContext(r)
 
 	count, last, err := bigquerysync.SyncKeyRange(c, p, d, start, end, e)
 	// Error running
@@ -143,12 +158,18 @@ func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
 // Finally, the "queue" parameter can be specified to target a specific task
 // queue to run all sync jobs.
 func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	err := r.ParseForm()
+	if err != nil {
+		errorf(c, w, 400, "Invalid request: %v", err)
+		return
+	}
 	var (
-		p = r.FormValue("project")
-		d = r.FormValue("dataset")
-		k = r.FormValue("kind")
-		e = r.FormValue("exclude")
-		q = r.FormValue("queue")
+		p = r.Form.Get("project")
+		d = r.Form.Get("dataset")
+		k = r.Form.Get("kind")
+		e = r.Form.Get("exclude")
+		q = r.Form.Get("queue")
 	)
 	c := appengine.NewContext(r)
 	if p == "" || d == "" || k == "" {
