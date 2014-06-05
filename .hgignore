@@ -3,3 +3,4 @@ syntax:regexp
 ^aetools.test$
 .*\.swp$
 ^aeremote/aeremote$
+^bundle/app.local.yaml$

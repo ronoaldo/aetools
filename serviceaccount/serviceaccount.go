@@ -22,13 +22,12 @@
 package serviceaccount
 
 import (
-	"net/http"
-	"strings"
-
 	"appengine"
 	"appengine/urlfetch"
-
 	"code.google.com/p/goauth2/oauth"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // NewClient returns an *http.Client authorized for the
@@ -40,7 +39,7 @@ func NewClient(c appengine.Context, scopes ...string) (*http.Client, error) {
 		Scopes:  scopes,
 		Transport: &urlfetch.Transport{
 			Context:                       c,
-			Deadline:                      0,
+			Deadline:                      15 * time.Second,
 			AllowInvalidServerCertificate: false,
 		},
 		TokenCache: &cache{

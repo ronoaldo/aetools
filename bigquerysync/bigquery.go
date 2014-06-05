@@ -71,7 +71,6 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 	if err != nil {
 		return err
 	}
-	c.Infof("Payload: %s", string(payload))
 	client, err := NewClient(c)
 	if err != nil {
 		c.Errorf("Error initializing client %v", err)
@@ -174,8 +173,6 @@ func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[st
 		excludeRe = regexp.MustCompile("^$")
 	}
 
-	c.Debugf("Using exclude regexp: %v", excludeRe)
-
 	for k, v := range row {
 		if excludeRe.MatchString(k) {
 			delete(row, k)
@@ -192,6 +189,17 @@ func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[st
 				// Skip blob values
 				if t == "blob" {
 					value = "(blob)"
+				} else if t == "date" {
+					// Sanity check for invalid timestamps - oddly enought, when datastore
+					// has stored negative date values (why?) it generates an invalid
+					// date and time.
+					_, err := time.Parse(aetools.DateTimeFormat, v["value"].(string))
+					if err != nil {
+						c.Warningf("Ignoring invalid timestamp field: %s: %+v (err=%s)", k, v, err.Error())
+						delete(row, k)
+						continue
+					}
+					value = v["value"]
 				} else {
 					value = v["value"]
 				}

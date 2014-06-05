@@ -79,10 +79,17 @@
 							<label for="bq-sync-dataset">Dataset</label>
 							<input type="text" class="form-control" id="bq-sync-dataset" name="dataset" />
 						</div>
-
 						<div class="form-group">
 							<label for="bq-sync-kind">Kind</label>
 							<input type="text" class="form-control" id="bq-sync-kind" name="kind" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-queue">Queue</label>
+							<input type="text" class="form-control" id="bq-sync-queue" name="kind" value="bigquerysync" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-exclude">Exclude</label>
+							<input type="text" class="form-control" id="bq-sync-exclude" name="exclude" />
 						</div>
 						<button type="submit" class="btn btn-primary">Sync Kind</button>
 					</form>
@@ -108,6 +115,14 @@
 						<div class="form-group">
 							<label for="bq-sync-range-end">End Key</label>
 							<input type="text" class="form-control" id="bq-sync-range-end" name="endKey" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-range-queue">Queue</label>
+							<input type="text" class="form-control" id="bq-sync-range-queue" name="queue" />
+						</div>
+						<div class="form-group">
+							<label for="bq-sync-range-exclude">Exclude</label>
+							<input type="text" class="form-control" id="bq-sync-range-exclude" name="exclude" />
 						</div>
 						<button type="submit" class="btn btn-primary">Sync Range</button>
 					</form>
