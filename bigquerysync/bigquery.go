@@ -1,21 +1,19 @@
 package bigquerysync
 
 import (
+	"appengine"
 	"bytes"
+	"code.google.com/p/google-api-go-client/bigquery/v2"
+	"code.google.com/p/google-api-go-client/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
-	"time"
-
-	"appengine"
-
-	"code.google.com/p/google-api-go-client/bigquery/v2"
-	"code.google.com/p/google-api-go-client/googleapi"
 	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/serviceaccount"
+	"strings"
+	"time"
 )
 
 const (
@@ -63,8 +61,6 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 			return err
 		}
 		id := fmt.Sprintf("%s#%d", e.Key.Encode(), time.Now().UnixNano())
-		// The Go API client has a bug on some generic entities, as the JSON row,
-		// so we use a custom payload that is API equivalent.
 		r.Rows = append(r.Rows, InsertRow{InsertID: id, Json: row})
 	}
 	payload, err := json.Marshal(r)

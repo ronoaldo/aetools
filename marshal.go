@@ -5,6 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +45,7 @@ func (e *Entity) Map() (map[string]interface{}, error) {
 	}
 
 	for _, p := range e.Properties {
-		// Check if multi property is consistent so it's safe to a
+		// Check if multi property is consistent so it's safe to append
 		if p.Multiple {
 			if _, ok := m[p.Name]; !ok {
 				m[p.Name] = make([]interface{}, 0)
@@ -62,9 +65,9 @@ func (e *Entity) Map() (map[string]interface{}, error) {
 			}
 		case float32, float64:
 			if p.NoIndex {
-				add(p.Multiple, p.Name, toMap("float", p.NoIndex, p.Value))
+				add(p.Multiple, p.Name, toMap("float", p.NoIndex, float(p.Value.(float64))))
 			} else {
-				add(p.Multiple, p.Name, p.Value)
+				add(p.Multiple, p.Name, float(p.Value.(float64)))
 			}
 		case string:
 			if p.NoIndex {
@@ -105,6 +108,22 @@ func (e *Entity) Map() (map[string]interface{}, error) {
 		}
 	}
 	return m, nil
+}
+
+type float float64
+
+var hasDecimalPoint = regexp.MustCompile(".*[.eE].*")
+
+func (f float) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+	if math.IsInf(float64(f), 0) || math.IsNaN(float64(f)) {
+		return nil, fmt.Errorf("aetools: unsuported float value: %#v", f)
+	}
+	b.Write(strconv.AppendFloat(b.Bytes(), float64(f), 'g', -1, 64))
+	if !hasDecimalPoint.Match(b.Bytes()) {
+		b.WriteString(".0")
+	}
+	return b.Bytes(), nil
 }
 
 func decodeJSONPrimitiveValue(v interface{}, p *datastore.Property) error {

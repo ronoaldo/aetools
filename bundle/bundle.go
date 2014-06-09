@@ -171,7 +171,6 @@ func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
 		e = r.Form.Get("exclude")
 		q = r.Form.Get("queue")
 	)
-	c := appengine.NewContext(r)
 	if p == "" || d == "" || k == "" {
 		errorf(c, w, 400, "Invalid parameters: project='%s', dataset='%s', kind='%s'", p, d, k)
 	}
