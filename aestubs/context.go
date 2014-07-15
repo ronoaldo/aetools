@@ -12,6 +12,7 @@ import (
 
 type Context interface {
 	appengine.Context
+	Clean()
 }
 
 type Opts struct {
@@ -62,6 +63,15 @@ func (c *context) Call(service, method string, in, out appengine_internal.ProtoM
 		}
 	}
 	return fmt.Errorf("Unknown service %s", service)
+}
+
+// Clean call ServiceStub.Clean in all registered stubs
+func (c *context) Clean() {
+	stubsMu.Lock()
+	defer stubsMu.Unlock()
+	for _, service := range stubs {
+		service.Clean()
+	}
 }
 
 // Asserts that context implements appengine.Context

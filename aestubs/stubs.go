@@ -13,6 +13,7 @@ var (
 
 type ServiceStub interface {
 	Call(method string, in, out appengine_internal.ProtoMessage, opts *appengine_internal.CallOptions) error
+	Clean()
 }
 
 func RegisterServiceStub(service string, stub ServiceStub) error {

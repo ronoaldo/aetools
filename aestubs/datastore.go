@@ -4,6 +4,7 @@ import (
 	"appengine/datastore"
 	"appengine_internal"
 	datastorepb "appengine_internal/datastore"
+	"bytes"
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
 	"sync"
@@ -41,14 +42,23 @@ func (d *datastoreStub) Call(method string, in, out appengine_internal.ProtoMess
 	return nil
 }
 
+// Clean clean up the datastore data in memory
+func (d *datastoreStub) Clean() {
+	d.entitiesMu.Lock()
+	defer d.entitiesMu.Unlock()
+	for k := range d.entities {
+		delete(d.entities, k)
+	}
+}
+
 // put handles a datastore_v3.Put method call.
 func (d *datastoreStub) put(req *datastorepb.PutRequest, resp *datastorepb.PutResponse) error {
 	d.entitiesMu.Lock()
 	defer d.entitiesMu.Unlock()
 	for _, e := range req.Entity {
 		e.Key = d.makeCompleteKey(e.Key)
-		k := proto.MarshalTextString(e.Key)
-		v := proto.MarshalTextString(e)
+		k := proto.CompactTextString(e.Key)
+		v := proto.CompactTextString(e)
 		d.entities[k] = v
 		resp.Key = append(resp.Key, e.Key)
 	}
@@ -59,9 +69,8 @@ func (d *datastoreStub) put(req *datastorepb.PutRequest, resp *datastorepb.PutRe
 func (d *datastoreStub) get(req *datastorepb.GetRequest, resp *datastorepb.GetResponse) error {
 	d.entitiesMu.Lock()
 	defer d.entitiesMu.Unlock()
-
 	for _, keyProto := range req.Key {
-		k := proto.MarshalTextString(keyProto)
+		k := proto.CompactTextString(keyProto)
 		if s, ok := d.entities[k]; ok {
 			e := new(datastorepb.EntityProto)
 			err := proto.UnmarshalText(s, e)
@@ -78,7 +87,6 @@ func (d *datastoreStub) get(req *datastorepb.GetRequest, resp *datastorepb.GetRe
 			return datastore.ErrNoSuchEntity
 		}
 	}
-
 	return datastore.ErrNoSuchEntity
 }
 
@@ -106,4 +114,12 @@ func (d *datastoreStub) makeCompleteKey(k *datastorepb.Reference) *datastorepb.R
 
 func (d *datastoreStub) length() int {
 	return len(d.entities)
+}
+
+func (d *datastoreStub) dump() string {
+	var b bytes.Buffer
+	for k, v := range d.entities {
+		fmt.Fprintf(&b, "key: %s\nentity: %s\n---\n\n", k, v)
+	}
+	return b.String()
 }

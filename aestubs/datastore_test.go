@@ -11,8 +11,9 @@ type Entity struct {
 	B int
 }
 
-func TestDatastorePut(t *testing.T) {
+func TestPut(t *testing.T) {
 	c := NewContext(nil, t)
+	defer c.Clean()
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	k, err := datastore.Put(c, k, &Entity{"Test", 1})
 	if err != nil {
@@ -42,8 +43,9 @@ func TestDatastorePut(t *testing.T) {
 	}
 }
 
-func TestDatastoreLoad(t *testing.T) {
+func TestGet(t *testing.T) {
 	c := NewContext(nil, t)
+	defer c.Clean()
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	expected := &Entity{"GetTest", 123456}
 	k, err := datastore.Put(c, k, &Entity{"GetTest", 123456})
@@ -66,9 +68,10 @@ func TestDatastoreLoad(t *testing.T) {
 
 func TestPutMulti(t *testing.T) {
 	c := NewContext(nil, t)
+	defer c.Clean()
 	keys := make([]*datastore.Key, 0)
 	vals := make([]*Entity, 0)
-	for i := 0; i < 10; i++ {
+	for i := 1; i <= 10; i++ {
 		keys = append(keys, datastore.NewKey(c, "TestMultiKind", "", int64(i), nil))
 		vals = append(vals, &Entity{fmt.Sprintf("Test Entity %d", i), i})
 	}
@@ -79,7 +82,8 @@ func TestPutMulti(t *testing.T) {
 
 	// Internal checks
 	ds := stubs[DatastoreService].(*datastoreStub)
-	if ds.length() != 10 {
-		t.Errorf("Internal error: unexpected datastore length: %d, expected %d", 10, ds.length())
+	if ds.length() != len(vals) {
+		t.Logf("Datastore state: %s", ds.dump())
+		t.Errorf("Internal error: unexpected datastore length: %d, expected %d", ds.length(), len(vals))
 	}
 }
