@@ -38,7 +38,6 @@ func (d *DatastoreStub) Call(method string, in, out appengine_internal.ProtoMess
 	default:
 		return fmt.Errorf("datastore: Unknown method: %s", method)
 	}
-	return nil
 }
 
 // Clean clean up the datastore data in memory
@@ -82,10 +81,10 @@ func (d *DatastoreStub) get(req *datastorepb.GetRequest, resp *datastorepb.GetRe
 			})
 		} else {
 			// TODO: check if we must go and return more erros
-            resp.Entity = append(resp.Entity, &datastorepb.GetResponse_Entity{
-                Entity: nil,
-                Key:    keyProto,
-            })
+			resp.Entity = append(resp.Entity, &datastorepb.GetResponse_Entity{
+				Entity: nil,
+				Key:    keyProto,
+			})
 		}
 	}
 	return nil

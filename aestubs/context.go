@@ -7,14 +7,14 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
-    "sync"
 )
 
 type Context interface {
 	appengine.Context
-    Clean()
-    Stub(service string, stub ServiceStub) Context
+	Clean()
+	Stub(service string, stub ServiceStub) Context
 }
 
 type ServiceStub interface {
@@ -36,21 +36,21 @@ func (o *Opts) appID() string {
 // context implements the Context interface using a map of in-memory service
 // stubs.
 type context struct {
-	opts *Opts
-	t    testing.TB
-	req  *http.Request
+	opts    *Opts
+	t       testing.TB
+	req     *http.Request
 	stubs   map[string]ServiceStub
 	stubsMu sync.Mutex
 }
 
 func NewContext(opts *Opts, t *testing.T) Context {
 	req, _ := http.NewRequest("GET", "/", nil)
-    return &context{
-        opts: opts,
-        t: t,
-        req: req,
-        stubs: make(map[string]ServiceStub),
-    }
+	return &context{
+		opts:  opts,
+		t:     t,
+		req:   req,
+		stubs: make(map[string]ServiceStub),
+	}
 }
 
 func (c *context) AppID() string               { return "testapp" }
@@ -95,8 +95,8 @@ func (c *context) Stub(service string, stub ServiceStub) Context {
 	c.stubsMu.Lock()
 	defer c.stubsMu.Unlock()
 	if _, ok := c.stubs[service]; ok {
-        panic(fmt.Errorf("aestubs: service stub %s already registered", service))
+		panic(fmt.Errorf("aestubs: service stub %s already registered", service))
 	}
 	c.stubs[service] = stub
-    return c
+	return c
 }

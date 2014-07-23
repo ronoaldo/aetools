@@ -1,7 +1,7 @@
 package aestubs
 
 import (
-    "appengine"
+	"appengine"
 	"appengine/datastore"
 	"fmt"
 	"testing"
@@ -13,8 +13,8 @@ type Entity struct {
 }
 
 func TestPut(t *testing.T) {
-    ds := NewDatastoreStub()
-    c := NewContext(nil, t).Stub(Datastore, ds)
+	ds := NewDatastoreStub()
+	c := NewContext(nil, t).Stub(Datastore, ds)
 
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	k, err := datastore.Put(c, k, &Entity{"Test", 1})
@@ -45,9 +45,9 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-    ds := NewDatastoreStub()
-    c := NewContext(nil, t).Stub(Datastore, ds)
-    
+	ds := NewDatastoreStub()
+	c := NewContext(nil, t).Stub(Datastore, ds)
+
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	expected := &Entity{"GetTest", 123456}
 	k, err := datastore.Put(c, k, &Entity{"GetTest", 123456})
@@ -69,10 +69,10 @@ func TestGet(t *testing.T) {
 }
 
 func TestPutMulti(t *testing.T) {
-    ds := NewDatastoreStub()
-    c := NewContext(nil, t).Stub(Datastore, ds)
-    
-    keys, vals := makeSampleEntities(c)
+	ds := NewDatastoreStub()
+	c := NewContext(nil, t).Stub(Datastore, ds)
+
+	keys, vals := makeSampleEntities(c)
 	keys, err := datastore.PutMulti(c, keys, vals)
 	if err != nil {
 		t.Errorf("Unexpected error returned in datastore.Put: %v", err)
@@ -85,31 +85,31 @@ func TestPutMulti(t *testing.T) {
 }
 
 func TestGetMulti(t *testing.T) {
-    ds := NewDatastoreStub()
-    c := NewContext(nil, t).Stub(Datastore, ds)
-    
-    keys, vals := makeSampleEntities(c)
-    expected := len(keys)
-    keys, err := datastore.PutMulti(c, keys, vals)
-    if err != nil {
-        t.Errorf("Unexpected error returned in datastore.Put: %v", err)
-    }
-    
-    err = datastore.GetMulti(c, keys, vals)
-    if err != nil {
-        t.Errorf("Unexpected error returned in datastore.Get: %v", err)
-    }
-    
-    if len(keys) != expected || len(vals) != expected {
-        t.Errorf("Invalid result from batch get: %d, %d; expected %d", len(keys), len(vals), expected)
-    }
-    
-    keys = append(keys, datastore.NewKey(c, "KeyNotFound", "", int64(1), nil))
-    vals = append(vals, &Entity{})
-    err = datastore.GetMulti(c, keys, vals)
-    if err == nil {
-        t.Errorf("Expecting a datastore error for non existent entity")
-    }
+	ds := NewDatastoreStub()
+	c := NewContext(nil, t).Stub(Datastore, ds)
+
+	keys, vals := makeSampleEntities(c)
+	expected := len(keys)
+	keys, err := datastore.PutMulti(c, keys, vals)
+	if err != nil {
+		t.Errorf("Unexpected error returned in datastore.Put: %v", err)
+	}
+
+	err = datastore.GetMulti(c, keys, vals)
+	if err != nil {
+		t.Errorf("Unexpected error returned in datastore.Get: %v", err)
+	}
+
+	if len(keys) != expected || len(vals) != expected {
+		t.Errorf("Invalid result from batch get: %d, %d; expected %d", len(keys), len(vals), expected)
+	}
+
+	keys = append(keys, datastore.NewKey(c, "KeyNotFound", "", int64(1), nil))
+	vals = append(vals, &Entity{})
+	err = datastore.GetMulti(c, keys, vals)
+	if err == nil {
+		t.Errorf("Expecting a datastore error for non existent entity")
+	}
 }
 
 func makeSampleEntities(c appengine.Context) ([]*datastore.Key, []*Entity) {
@@ -119,6 +119,6 @@ func makeSampleEntities(c appengine.Context) ([]*datastore.Key, []*Entity) {
 		keys = append(keys, datastore.NewKey(c, "TestMultiKind", "", int64(i), nil))
 		vals = append(vals, &Entity{fmt.Sprintf("Test Entity %d", i), i})
 	}
-    
-    return keys, vals
+
+	return keys, vals
 }
