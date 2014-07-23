@@ -8,10 +8,17 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+    "sync"
 )
 
 type Context interface {
 	appengine.Context
+    Clean()
+    Stub(service string, stub ServiceStub) Context
+}
+
+type ServiceStub interface {
+	Call(method string, in, out appengine_internal.ProtoMessage, opts *appengine_internal.CallOptions) error
 	Clean()
 }
 
@@ -26,15 +33,24 @@ func (o *Opts) appID() string {
 	return o.AppID
 }
 
+// context implements the Context interface using a map of in-memory service
+// stubs.
 type context struct {
 	opts *Opts
 	t    testing.TB
 	req  *http.Request
+	stubs   map[string]ServiceStub
+	stubsMu sync.Mutex
 }
 
 func NewContext(opts *Opts, t *testing.T) Context {
 	req, _ := http.NewRequest("GET", "/", nil)
-	return &context{opts: opts, t: t, req: req}
+    return &context{
+        opts: opts,
+        t: t,
+        req: req,
+        stubs: make(map[string]ServiceStub),
+    }
 }
 
 func (c *context) AppID() string               { return "testapp" }
@@ -56,9 +72,9 @@ func (c *context) Call(service, method string, in, out appengine_internal.ProtoM
 			return nil
 		}
 	default:
-		stubsMu.Lock()
-		defer stubsMu.Unlock()
-		if service, ok := stubs[service]; ok {
+		c.stubsMu.Lock()
+		defer c.stubsMu.Unlock()
+		if service, ok := c.stubs[service]; ok {
 			return service.Call(method, in, out, opts)
 		}
 	}
@@ -67,12 +83,20 @@ func (c *context) Call(service, method string, in, out appengine_internal.ProtoM
 
 // Clean call ServiceStub.Clean in all registered stubs
 func (c *context) Clean() {
-	stubsMu.Lock()
-	defer stubsMu.Unlock()
-	for _, service := range stubs {
+	c.stubsMu.Lock()
+	defer c.stubsMu.Unlock()
+	for _, service := range c.stubs {
 		service.Clean()
 	}
 }
 
-// Asserts that context implements appengine.Context
-var _ appengine.Context = &context{}
+// Stub adds a new ServiceStub to the specified service name.
+func (c *context) Stub(service string, stub ServiceStub) Context {
+	c.stubsMu.Lock()
+	defer c.stubsMu.Unlock()
+	if _, ok := c.stubs[service]; ok {
+        panic(fmt.Errorf("aestubs: service stub %s already registered", service))
+	}
+	c.stubs[service] = stub
+    return c
+}
