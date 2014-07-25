@@ -112,6 +112,36 @@ func TestGetMulti(t *testing.T) {
 	}
 }
 
+func TestAllocateIDs(t *testing.T) {
+	c := NewContext(nil, t).Stub(Datastore, NewDatastoreStub())
+	anc := datastore.NewKey(c, "Ancestor", "", 1, nil)
+	cases := []struct {
+		anc  *datastore.Key
+		n    int
+		low  int64
+		high int64
+	}{
+		{nil, 1, 1, 2},
+		{nil, 1, 2, 3},
+		{nil, 4, 3, 7},
+		{anc, 1, 7, 8},
+		{anc, 1, 8, 9},
+	}
+
+	for _, test := range cases {
+		l, h, err := datastore.AllocateIDs(c, "Test", test.anc, test.n)
+		if err != nil {
+			t.Errorf("Unexpected error alocating IDs for %v, %d: %v", test.anc, test.n, err)
+		}
+		if test.low != l {
+			t.Errorf("Unexpected low value %d, expecting %d (%v, %d)", l, test.low, test.anc, test.n)
+		}
+		if test.high != h {
+			t.Errorf("Unexpected high value %d, expecting %d (%v, %d)", h, test.high, test.anc, test.n)
+		}
+	}
+}
+
 func makeSampleEntities(c appengine.Context) ([]*datastore.Key, []*Entity) {
 	keys := make([]*datastore.Key, 0)
 	vals := make([]*Entity, 0)

@@ -62,6 +62,7 @@ Currently implemented services and methods are:
 
 	datastore_v3.Get
 	datastore_v3.Put
+	datastore_v3.AllocateIds
 
 Not all services are implemented yet, but they can be added in your test code.
 The caveat is that your test code will also rely directly in the appengine_internal

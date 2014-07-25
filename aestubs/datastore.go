@@ -5,6 +5,7 @@ import (
 	datastorepb "appengine_internal/datastore"
 	"bytes"
 	"code.google.com/p/goprotobuf/proto"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,8 @@ func (d *DatastoreStub) Call(method string, in, out appengine_internal.ProtoMess
 		return d.get(in.(*datastorepb.GetRequest), out.(*datastorepb.GetResponse))
 	case "Put":
 		return d.put(in.(*datastorepb.PutRequest), out.(*datastorepb.PutResponse))
+	case "AllocateIds":
+		return d.allocateIDs(in.(*datastorepb.AllocateIdsRequest), out.(*datastorepb.AllocateIdsResponse))
 	default:
 		return fmt.Errorf("datastore: Unknown method: %s", method)
 	}
@@ -90,8 +93,19 @@ func (d *DatastoreStub) get(req *datastorepb.GetRequest, resp *datastorepb.GetRe
 	return nil
 }
 
-// nextId atomically increments an identifier using the datastore legacy
-// id policy.
+// allocateIDs handles the datastore method AllocateIds.
+func (d *DatastoreStub) allocateIDs(req *datastorepb.AllocateIdsRequest, resp *datastorepb.AllocateIdsResponse) error {
+	start := d.nextId()
+	end := start
+	for i := int64(1); i < *req.Size; i++ {
+		end = d.nextId()
+	}
+	resp.Start = &start
+	resp.End = &end
+	return nil
+}
+
+// nextId atomically increments an identifier using the datastore legacy id policy.
 // TODO: Implement the auto-id policy
 func (d *DatastoreStub) nextId() int64 {
 	return atomic.AddInt64(&d.autoId, int64(1))
@@ -122,4 +136,12 @@ func (d *DatastoreStub) dump() string {
 		fmt.Fprintf(&b, "key: %s\nentity: %s\n---\n\n", k, v)
 	}
 	return b.String()
+}
+
+func toJSON(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }
