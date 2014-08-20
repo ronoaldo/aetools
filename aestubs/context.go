@@ -11,10 +11,17 @@ import (
 	"testing"
 )
 
+const (
+	Datastore = "datastore_v3"
+	Taskqueue = "taskqueue"
+	Urlfetch  = "urlfetch"
+)
+
 type Context interface {
 	appengine.Context
+	Stub(service string) ServiceStub
+	AddStub(service string, stub ServiceStub) Context
 	Clean()
-	Stub(service string, stub ServiceStub) Context
 }
 
 type ServiceStub interface {
@@ -43,14 +50,23 @@ type context struct {
 	stubsMu sync.Mutex
 }
 
-func NewContext(opts *Opts, t *testing.T) Context {
+func NewEmptyContext(opts *Opts, t *testing.T) Context {
 	req, _ := http.NewRequest("GET", "/", nil)
-	return &context{
+	c := &context{
 		opts:  opts,
 		t:     t,
 		req:   req,
 		stubs: make(map[string]ServiceStub),
 	}
+	return c
+}
+
+func NewContext(opts *Opts, t *testing.T) Context {
+	c := NewEmptyContext(opts, t)
+	c.AddStub(Datastore, NewDatastoreStub())
+	c.AddStub(Taskqueue, NewTaskqueueStub())
+	c.AddStub(Urlfetch, NewUrlfetchStub())
+	return c
 }
 
 func (c *context) AppID() string               { return "testapp" }
@@ -90,8 +106,16 @@ func (c *context) Clean() {
 	}
 }
 
-// Stub adds a new ServiceStub to the specified service name.
-func (c *context) Stub(service string, stub ServiceStub) Context {
+// Stub returns the ServiceStub implementation of the provided service name.
+// Returns nil if there is no stub for the requested service.
+func (c *context) Stub(service string) ServiceStub {
+	c.stubsMu.Lock()
+	defer c.stubsMu.Unlock()
+	return c.stubs[service]
+}
+
+// AddStub adds a new ServiceStub to the specified service name.
+func (c *context) AddStub(service string, stub ServiceStub) Context {
 	c.stubsMu.Lock()
 	defer c.stubsMu.Unlock()
 	if _, ok := c.stubs[service]; ok {

@@ -13,8 +13,8 @@ type Entity struct {
 }
 
 func TestPut(t *testing.T) {
-	ds := NewDatastoreStub()
-	c := NewContext(nil, t).Stub(Datastore, ds)
+	c := NewContext(nil, t)
+	ds := c.Stub(Datastore).(*DatastoreStub)
 
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	k, err := datastore.Put(c, k, &Entity{"Test", 1})
@@ -45,8 +45,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	ds := NewDatastoreStub()
-	c := NewContext(nil, t).Stub(Datastore, ds)
+	c := NewContext(nil, t)
 
 	k := datastore.NewKey(c, "MyKind", "", 0, nil)
 	expected := &Entity{"GetTest", 123456}
@@ -69,8 +68,8 @@ func TestGet(t *testing.T) {
 }
 
 func TestPutMulti(t *testing.T) {
-	ds := NewDatastoreStub()
-	c := NewContext(nil, t).Stub(Datastore, ds)
+	c := NewContext(nil, t)
+	ds := c.Stub(Datastore).(*DatastoreStub)
 
 	keys, vals := makeSampleEntities(c)
 	keys, err := datastore.PutMulti(c, keys, vals)
@@ -85,8 +84,7 @@ func TestPutMulti(t *testing.T) {
 }
 
 func TestGetMulti(t *testing.T) {
-	ds := NewDatastoreStub()
-	c := NewContext(nil, t).Stub(Datastore, ds)
+	c := NewContext(nil, t)
 
 	keys, vals := makeSampleEntities(c)
 	expected := len(keys)
@@ -113,7 +111,7 @@ func TestGetMulti(t *testing.T) {
 }
 
 func TestAllocateIDs(t *testing.T) {
-	c := NewContext(nil, t).Stub(Datastore, NewDatastoreStub())
+	c := NewContext(nil, t)
 	anc := datastore.NewKey(c, "Ancestor", "", 1, nil)
 	cases := []struct {
 		anc  *datastore.Key

@@ -11,10 +11,6 @@ import (
 	"sync/atomic"
 )
 
-const (
-	Datastore = "datastore_v3"
-)
-
 // DatastoreStub is an in-memory datastore backed by a map.
 type DatastoreStub struct {
 	entities   map[string]string
