@@ -29,15 +29,15 @@ You can use the package by initializing either an service-aware context:
 		fmt.Printf(appengine.AppID(c))
 	}
 
-It is also possible to use an in-memory stub provided by the package. For
-instance, one can use the following:
+It is also possible to use an in-memory stub provided by the package. The context
+returned by NewContext method contains all services binded by default:
 
 	type Test struct {
 		Name string
 	}
 
 	func TestDatastorePut(t *testing.T) {
-		c := aestubs.NewContext(nil, t).Stub(aestubs.Datastore, aestubs.NewDatastoreStub())
+		c := aestubs.NewContext(nil, t)
 		// The in-memory implementation requires no setup or tear down, and
 		// is safe for concurrent use
 		k := datastore.NewKey(c, "Test", "", 0, nil)
@@ -60,15 +60,15 @@ Implemented services and methods
 
 Currently implemented services and methods are:
 
-	datastore_v3.Get
-	datastore_v3.Put
-	datastore_v3.AllocateIds
-	urlfetch.Fetch (partially functional)
-	taskqueue.Add (partially functional)
+	datastore_v3.Get           Work as expected.
+	datastore_v3.Put           Work as expected.
+	datastore_v3.AllocateIds   Work as expected, simulates legacy id policy.
+	urlfetch.Fetch             Basic funcionality, no headers, limit validation, performs real HTTP requests.
+	taskqueue.Add              Allow basic task enqueue, no queue name validation, no tasks run, count enqueued tasks per queue.
 
 Not all services are implemented yet, but they can be added in your test code.
 The caveat is that your test code will also rely directly in the appengine_internal
-package, and this may not be a great idea.
+package.
 
 */
 package aestubs
