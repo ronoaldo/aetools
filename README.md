@@ -1,7 +1,8 @@
 # aetools
 
+[![Codeship Status for ronoaldo/aetools](https://www.codeship.io/projects/df170a80-0f81-0132-0248-129d6db6c348/status)](https://www.codeship.io/projects/32646)
+
 [![GoDoc](https://godoc.org/ronoaldo.gopkg.net/aetools?status.png)](https://godoc.org/ronoaldo.gopkg.net/aetools)
-[ ![Codeship Status for ronoaldo/aetools](https://www.codeship.io/projects/df170a80-0f81-0132-0248-129d6db6c348/status)](https://www.codeship.io/projects/32646)
 
     import "ronoaldo.gopkg.net/aetools"
 
