@@ -122,14 +122,27 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 
 	w.Write(op_b)
 	count := 0
+	last := 0
 
-	q := datastore.NewQuery(o.Kind)
+	q := datastore.NewQuery(o.Kind).Limit(100)
 	for i := q.Run(c); ; {
 		var e Entity
 		k, err := i.Next(&e)
 		e.Key = k
 		if err == datastore.Done {
-			break
+			c.Infof("datastore.Done: last=%d, count=%d", last, count)
+			if last == count || count-last < 100 {
+				break
+			}
+			// This 100 batch is done, but more can be found in the next one
+			last = count
+			cur, err := i.Cursor()
+			if err != nil {
+				return err
+			}
+			c.Infof("restarting the query: cursor=%v", cur)
+			i = datastore.NewQuery(o.Kind).Limit(100).Start(cur).Run(c)
+			continue
 		}
 		if err != nil {
 			return err
@@ -149,15 +162,6 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		}
 		w.Write(b)
 		count++
-		// Restart a new query so we avoid some query timeouts.
-		// TODO(ronoaldo): make this magic 100 be configurable via opts.
-		if count%100 == 0 {
-			cur, err := i.Cursor()
-			if err != nil {
-				return err
-			}
-			i = datastore.NewQuery(o.Kind).Start(cur).Run(c)
-		}
 	}
 	w.Write(cl_b)
 	return nil
