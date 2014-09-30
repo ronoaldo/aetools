@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"beneficiofacil.gopkg.net/sisbf/vendor/github.com/drhodes/golorem"
+	"github.com/drhodes/golorem"
 
 	"appengine"
 	"appengine/aetest"
