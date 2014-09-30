@@ -65,7 +65,7 @@ func LoadJSON(c appengine.Context, s string, o *Options) error {
 // error may be returned after some entities were loaded: there is no
 // parsing cache.
 func Load(c appengine.Context, r io.Reader, o *Options) error {
-	entities, err := decodeEntities(c, r)
+	entities, err := DecodeEntities(c, r)
 	if err != nil {
 		return err
 	}
@@ -149,13 +149,22 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		}
 		w.Write(b)
 		count++
+		// Restart a new query so we avoid some query timeouts.
+		// TODO(ronoaldo): make this magic 100 be configurable via opts.
+		if count%100 == 0 {
+			cur, err := i.Cursor()
+			if err != nil {
+				return err
+			}
+			i = datastore.NewQuery(o.Kind).Start(cur).Run(c)
+		}
 	}
 	w.Write(cl_b)
 	return nil
 }
 
-// encodeEntities serializes the parameter into a JSON string.
-func encodeEntities(entities []Entity, w io.Writer) error {
+// EncodeEntities serializes the parameter into a JSON string.
+func EncodeEntities(entities []Entity, w io.Writer) error {
 	for i, e := range entities {
 		err := encodeEntity(e, w)
 		if err != nil {
@@ -165,8 +174,8 @@ func encodeEntities(entities []Entity, w io.Writer) error {
 	return nil
 }
 
-// decodeEntities deserielizes the parameter from a JSON string
-func decodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
+// DecodeEntities deserielizes the parameter from a JSON string
+func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
 	a, err := parseJSONArray(r)
 	if err != nil {
 		return nil, err

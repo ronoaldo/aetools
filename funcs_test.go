@@ -99,7 +99,7 @@ func TestEncodeEntities(t *testing.T) {
 	t.Logf("encodeKey: from %s to %#v", entities[0].Key, p)
 
 	w := new(bytes.Buffer)
-	err = encodeEntities(entities, w)
+	err = EncodeEntities(entities, w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestDecodeEntities(t *testing.T) {
 	}
 	defer c.Close()
 
-	r, err := decodeEntities(c, bytes.NewReader(fixture))
+	r, err := DecodeEntities(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
