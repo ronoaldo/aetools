@@ -10,7 +10,6 @@ import (
 	"beneficiofacil.gopkg.net/sisbf/vendor/github.com/drhodes/golorem"
 
 	"appengine"
-
 	"appengine/aetest"
 	"appengine/datastore"
 )
