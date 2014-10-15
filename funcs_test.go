@@ -7,10 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"appengine"
-
 	"github.com/drhodes/golorem"
 
+	"appengine"
 	"appengine/aetest"
 	"appengine/datastore"
 )
@@ -99,7 +98,7 @@ func TestEncodeEntities(t *testing.T) {
 	t.Logf("encodeKey: from %s to %#v", entities[0].Key, p)
 
 	w := new(bytes.Buffer)
-	err = encodeEntities(entities, w)
+	err = EncodeEntities(entities, w)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +120,7 @@ func TestDecodeEntities(t *testing.T) {
 	}
 	defer c.Close()
 
-	r, err := decodeEntities(c, bytes.NewReader(fixture))
+	r, err := DecodeEntities(c, bytes.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +182,42 @@ func TestLoadFixtures(t *testing.T) {
 	}
 }
 
+func TestBatchSizeOnDump(t *testing.T) {
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	for _, i := range []int{10, 20, 50, 99, 100, 101} {
+		t.Logf("Testing %d entities ...", i)
+		if err := createSampleEntities(c, i); err != nil {
+			t.Fatal(err)
+		}
+		w := new(bytes.Buffer)
+		err := Dump(c, w, &DumpOptions{"User", false})
+		if err != nil {
+			t.Fatal(err)
+		}
+		count := strings.Count(w.String(), "__key__")
+		if count != i {
+			t.Errorf("Unexpected number of __key__'s %d: expected %d", count, i)
+		}
+		// t.Logf(w.String())
+		// Check if we have all keys
+		for id := 1; id <= i; id++ {
+			sep := fmt.Sprintf(`["User",%d]`, id)
+			occ := strings.Count(w.String(), sep)
+			if occ != 1 {
+				t.Errorf("Unexpected ocorrences of entity id %d: %d, expected 1", id, occ)
+			}
+		}
+	}
+}
+
 func createSampleEntities(c appengine.Context, size int) error {
+	buff := make([]Entity, 0, 10)
+	keys := make([]*datastore.Key, 0, 10)
 	for i := 1; i <= size; i++ {
 		k := datastore.NewKey(c, "User", "", int64(i), nil)
 		e := Entity{Key: k}
@@ -223,12 +257,26 @@ func createSampleEntities(c appengine.Context, size int) error {
 				Multiple: true,
 			})
 		}
+		buff = append(buff, e)
+		keys = append(keys, k)
 
-		k, err := datastore.Put(c, k, &e)
+		if len(buff) == 10 {
+			_, err := datastore.PutMulti(c, keys, buff)
+			if err != nil {
+				return err
+			}
+			_ = datastore.GetMulti(c, keys, buff)
+
+			buff = make([]Entity, 0, 10)
+			keys = make([]*datastore.Key, 0, 10)
+		}
+	}
+	if len(buff) > 0 {
+		k, err := datastore.PutMulti(c, keys, buff)
 		if err != nil {
 			return err
 		}
-		_ = datastore.Get(c, k, &e)
+		_ = datastore.GetMulti(c, k, buff)
 	}
 	return nil
 }
