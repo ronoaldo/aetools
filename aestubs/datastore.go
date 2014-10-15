@@ -7,6 +7,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -34,6 +35,8 @@ func (d *DatastoreStub) Call(method string, in, out appengine_internal.ProtoMess
 		return d.put(in.(*datastorepb.PutRequest), out.(*datastorepb.PutResponse))
 	case "AllocateIds":
 		return d.allocateIDs(in.(*datastorepb.AllocateIdsRequest), out.(*datastorepb.AllocateIdsResponse))
+	case "RunQuery":
+		return d.runQuery(in.(*datastorepb.Query), out.(*datastorepb.QueryResult))
 	default:
 		return fmt.Errorf("datastore: Unknown method: %s", method)
 	}
@@ -54,8 +57,7 @@ func (d *DatastoreStub) put(req *datastorepb.PutRequest, resp *datastorepb.PutRe
 	defer d.entitiesMu.Unlock()
 	for _, e := range req.Entity {
 		e.Key = d.makeCompleteKey(e.Key)
-		k := proto.CompactTextString(e.Key)
-		v := proto.CompactTextString(e)
+		k, v := entityToString(e)
 		d.entities[k] = v
 		resp.Key = append(resp.Key, e.Key)
 	}
@@ -69,8 +71,7 @@ func (d *DatastoreStub) get(req *datastorepb.GetRequest, resp *datastorepb.GetRe
 	for _, keyProto := range req.Key {
 		k := proto.CompactTextString(keyProto)
 		if s, ok := d.entities[k]; ok {
-			e := new(datastorepb.EntityProto)
-			err := proto.UnmarshalText(s, e)
+			e, err := stringToEntity(s)
 			if err != nil {
 				return err
 			}
@@ -101,6 +102,42 @@ func (d *DatastoreStub) allocateIDs(req *datastorepb.AllocateIdsRequest, resp *d
 	return nil
 }
 
+// runQuery performs a query in the datastore.
+func (d *DatastoreStub) runQuery(q *datastorepb.Query, resp *datastorepb.QueryResult) error {
+	log.Printf("datastore: runQuery: [q  ] -> %s", q)
+	log.Printf("datastore: runQuery: [out] -> %s", resp)
+	for _, s := range d.entities {
+		e, err := stringToEntity(s)
+		if err != nil {
+			return err
+		}
+
+		p := e.GetKey().GetPath().GetElement()
+		if p == nil {
+			return fmt.Errorf("datastore: internal error: nil key path for %s", e)
+		}
+		if p[len(p)-1].GetType() == q.GetKind() {
+			if entityMatchesFilters(e, q.GetFilter()) {
+				if resp.Result == nil {
+					resp.Result = make([]*datastorepb.EntityProto, 0)
+				}
+				resp.Result = append(resp.Result, e)
+			}
+		}
+	}
+	return nil // return fmt.Errorf("datastore: RunQuery not implemented")
+}
+
+func entityMatchesFilters(e *datastorepb.EntityProto, filters []*datastorepb.Query_Filter) bool {
+	if filters == nil {
+		return true
+	}
+	for _, f := range filters {
+		log.Printf("datastore: runQuery: filter value %s", f)
+	}
+	return false
+}
+
 // nextId atomically increments an identifier using the datastore legacy id policy.
 // TODO: Implement the auto-id policy
 func (d *DatastoreStub) nextId() int64 {
@@ -120,6 +157,21 @@ func (d *DatastoreStub) makeCompleteKey(k *datastorepb.Reference) *datastorepb.R
 		*e.Id = d.nextId()
 	}
 	return newKey
+}
+
+func entityToString(e *datastorepb.EntityProto) (string, string) {
+	k := proto.CompactTextString(e.Key)
+	v := proto.CompactTextString(e)
+	return k, v
+}
+
+func stringToEntity(s string) (*datastorepb.EntityProto, error) {
+	e := new(datastorepb.EntityProto)
+	err := proto.UnmarshalText(s, e)
+	if err != nil {
+		return nil, err
+	}
+	return e, nil
 }
 
 func (d *DatastoreStub) Length() int {

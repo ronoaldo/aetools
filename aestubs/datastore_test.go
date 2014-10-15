@@ -12,6 +12,10 @@ type Entity struct {
 	B int
 }
 
+func (e *Entity) String() string {
+	return fmt.Sprintf("<Test Entity A: %s, B: %s>", e.A, e.B)
+}
+
 func TestPut(t *testing.T) {
 	c := NewContext(nil, t)
 	ds := c.Stub(Datastore).(*DatastoreStub)
@@ -140,11 +144,43 @@ func TestAllocateIDs(t *testing.T) {
 	}
 }
 
+func TestRunQuery(t *testing.T) {
+	c := NewContext(nil, t)
+	keys, vals := makeSampleEntities(c)
+	keys, err := datastore.PutMulti(c, keys, vals)
+	if err != nil {
+		t.Error("Unable to setup test data: %v", err)
+	}
+
+	cases := []struct {
+		query *datastore.Query
+		size  int
+	}{
+		{datastore.NewQuery("Test"), 10},
+		{datastore.NewQuery("Test").Filter("A =", "Test Entity 1"), 1},
+	}
+	for i, tc := range cases {
+		result := make([]*Entity, 0)
+		k, err := tc.query.GetAll(c, &result)
+		if err != nil {
+			t.Errorf("Error running query %d (%s): %v", i, tc.query, err)
+			continue
+		}
+		if len(k) != len(result) {
+			t.Errorf("Keys returned differr from entity count: %d != %d", len(k), len(result))
+		}
+		t.Logf("%02d: query: %s, result=%v", i, tc.query, result)
+		if len(result) != tc.size {
+			t.Errorf("Invalid query results %d, expected %d", len(result), tc.size)
+		}
+	}
+}
+
 func makeSampleEntities(c appengine.Context) ([]*datastore.Key, []*Entity) {
 	keys := make([]*datastore.Key, 0)
 	vals := make([]*Entity, 0)
 	for i := 1; i <= 10; i++ {
-		keys = append(keys, datastore.NewKey(c, "TestMultiKind", "", int64(i), nil))
+		keys = append(keys, datastore.NewKey(c, "Test", "", int64(i), nil))
 		vals = append(vals, &Entity{fmt.Sprintf("Test Entity %d", i), i})
 	}
 

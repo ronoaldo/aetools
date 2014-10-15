@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"ronoaldo.gopkg.net/aetools"
+	"ronoaldo.gopkg.net/aetools/aestubs"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
-	"appengine/aetest"
 	"appengine/datastore"
 )
 
@@ -63,13 +63,9 @@ var datastoreStats = `
 }]`
 
 func TestDecodeStatByProperty(t *testing.T) {
-	c, err := aetest.NewContext(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
+	c := aestubs.NewContext(nil, t)
 
-	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
+	err := aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 	if err != nil {
 		t.Log("Unable to load fixtures")
 		t.Fatal(err)
@@ -107,12 +103,8 @@ func TestDecodeStatByProperty(t *testing.T) {
 }
 
 func TestInferTableSchema(t *testing.T) {
-	c, err := aetest.NewContext(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
+	c := aestubs.NewContext(nil, t)
+	err := aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 
 	s, err := bigquerysync.SchemaForKind(c, "Account")
 	if err != nil {
