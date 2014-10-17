@@ -1,15 +1,17 @@
 package aestubs
 
 import (
-	"appengine_internal"
-	datastorepb "appengine_internal/datastore"
 	"bytes"
-	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
+
+	"code.google.com/p/goprotobuf/proto"
+
+	"appengine_internal"
+	datastorepb "appengine_internal/datastore"
 )
 
 // DatastoreStub is an in-memory datastore backed by a map.
@@ -133,9 +135,26 @@ func entityMatchesFilters(e *datastorepb.EntityProto, filters []*datastorepb.Que
 		return true
 	}
 	for _, f := range filters {
-		log.Printf("datastore: runQuery: filter value %s", f)
+		switch f.GetOp() {
+		case datastorepb.Query_Filter_EQUAL:
+			// Must satisfy all equality filters on all filter criteria
+			for _, ep := range f.GetProperty() {
+				propFound := false
+				for _, e := range e.GetProperty() {
+					if ep.GetName() == e.GetName() {
+						propFound = true
+						if ep.String() != e.String() {
+							return false
+						}
+					}
+				}
+				if !propFound {
+					return false
+				}
+			}
+		}
 	}
-	return false
+	return true
 }
 
 // nextId atomically increments an identifier using the datastore legacy id policy.

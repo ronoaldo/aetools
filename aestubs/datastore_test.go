@@ -1,10 +1,11 @@
 package aestubs
 
 import (
-	"appengine"
-	"appengine/datastore"
 	"fmt"
 	"testing"
+
+	"appengine"
+	"appengine/datastore"
 )
 
 type Entity struct {
@@ -13,7 +14,7 @@ type Entity struct {
 }
 
 func (e *Entity) String() string {
-	return fmt.Sprintf("<Test Entity A: %s, B: %s>", e.A, e.B)
+	return fmt.Sprintf("&TestEntity{A:'%s', B:%d}", e.A, e.B)
 }
 
 func TestPut(t *testing.T) {
@@ -158,6 +159,7 @@ func TestRunQuery(t *testing.T) {
 	}{
 		{datastore.NewQuery("Test"), 10},
 		{datastore.NewQuery("Test").Filter("A =", "Test Entity 1"), 1},
+		{datastore.NewQuery("Test").Filter("A =", "Test Entity 1").Filter("B=", 1), 1},
 	}
 	for i, tc := range cases {
 		result := make([]*Entity, 0)
@@ -167,9 +169,9 @@ func TestRunQuery(t *testing.T) {
 			continue
 		}
 		if len(k) != len(result) {
-			t.Errorf("Keys returned differr from entity count: %d != %d", len(k), len(result))
+			t.Errorf("Keys returned differ from entity count: %d != %d", len(k), len(result))
 		}
-		t.Logf("%02d: query: %s, result=%v", i, tc.query, result)
+		t.Logf("Test query #%02d:\n\tquery => %v, \n\tresult => %v", i, tc.query, result)
 		if len(result) != tc.size {
 			t.Errorf("Invalid query results %d, expected %d", len(result), tc.size)
 		}

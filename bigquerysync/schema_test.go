@@ -8,6 +8,7 @@ import (
 	"ronoaldo.gopkg.net/aetools/aestubs"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
+	"appengine/aetest"
 	"appengine/datastore"
 )
 
@@ -103,8 +104,12 @@ func TestDecodeStatByProperty(t *testing.T) {
 }
 
 func TestInferTableSchema(t *testing.T) {
-	c := aestubs.NewContext(nil, t)
-	err := aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 
 	s, err := bigquerysync.SchemaForKind(c, "Account")
 	if err != nil {
