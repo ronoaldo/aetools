@@ -150,7 +150,7 @@ func TestRunQuery(t *testing.T) {
 	keys, vals := makeSampleEntities(c)
 	keys, err := datastore.PutMulti(c, keys, vals)
 	if err != nil {
-		t.Error("Unable to setup test data: %v", err)
+		t.Errorf("Unable to setup test data: %v", err)
 	}
 
 	cases := []struct {

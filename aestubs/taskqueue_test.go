@@ -1,9 +1,10 @@
 package aestubs
 
 import (
-	"appengine/taskqueue"
 	"net/url"
 	"testing"
+
+	"appengine/taskqueue"
 )
 
 func TestTaskQueueStub(t *testing.T) {
@@ -19,7 +20,7 @@ func TestTaskQueueStub(t *testing.T) {
 
 	ts := c.Stub(Taskqueue).(*TaskqueueStub)
 	if ts.AddedTasks("default") != 1 {
-		t.Errorf("Unexpected task count in queue myqueue: %d, expected %d", ts.AddedTasks("default"))
+		t.Errorf("Unexpected task count in queue myqueue: %d, expected %d", ts.AddedTasks("default"), 1)
 	}
 
 	task = &taskqueue.Task{

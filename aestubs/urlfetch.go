@@ -1,12 +1,13 @@
 package aestubs
 
 import (
-	"appengine_internal"
-	urlfetch_pb "appengine_internal/urlfetch"
 	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"appengine_internal"
+	urlfetch_pb "appengine_internal/urlfetch"
 )
 
 type UrlfetchStub struct {
@@ -24,7 +25,6 @@ func (u *UrlfetchStub) Call(method string, in, out appengine_internal.ProtoMessa
 	default:
 		return fmt.Errorf("urlfetch: unkown method: %s", method)
 	}
-	return nil
 }
 
 func (u *UrlfetchStub) Clean() {}
