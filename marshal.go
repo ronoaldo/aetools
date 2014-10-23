@@ -110,6 +110,22 @@ func (e *Entity) Map() (map[string]interface{}, error) {
 	return m, nil
 }
 
+// KeyPath returns a representation of a Key as a string with each value
+// in the key path separated by a coma.
+// The key representation has all ancestors,
+// but has no information about namespaces or ancestors.
+func KeyPath(k *datastore.Key) string {
+	b := new(bytes.Buffer)
+	path := encodeKey(k)
+	for i := range path {
+		fmt.Fprintf(b, "%v", path[i])
+		if i < len(path)-1 {
+			fmt.Fprint(b, ",")
+		}
+	}
+	return b.String()
+}
+
 type float float64
 
 var hasDecimalPoint = regexp.MustCompile(".*[.eE].*")

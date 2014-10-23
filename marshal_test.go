@@ -2,7 +2,27 @@ package aetools
 
 import (
 	"testing"
+
+	"ronoaldo.gopkg.net/aetools/aestubs"
+
+	"appengine/datastore"
 )
+
+func TestKeyPath(t *testing.T) {
+	c := aestubs.NewContext(nil, t)
+	defer c.Clean()
+
+	keys := []*datastore.Key{
+		datastore.NewKey(c, "Incomplete", "", 0, nil),
+		datastore.NewKey(c, "WithID", "", 1, nil),
+		datastore.NewKey(c, "WithName", "Name", 0, nil),
+		datastore.NewKey(c, "WithAncestor", "", 1, datastore.NewKey(c, "Ancestor", "Name", 0, nil)),
+	}
+
+	for _, k := range keys {
+		t.Logf("KeyPath of '%s' => `%s`", k, KeyPath(k))
+	}
+}
 
 func TestMarshalFloat(t *testing.T) {
 	cases := []struct {
