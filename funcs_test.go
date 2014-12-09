@@ -21,7 +21,7 @@ type Profile struct {
 	Birthday    time.Time `datastore:"birthday"`
 	Tags        []string  `datastore:"tags"`
 	Active      bool      `datastore:"active"`
-	HtmlDesc    string    `datastore:"htmlDesc"`
+	HTMLDesc    string    `datastore:"htmlDesc"`
 }
 
 func TestEndToEndTest(t *testing.T) {
@@ -211,6 +211,45 @@ func TestBatchSizeOnDump(t *testing.T) {
 			if occ != 1 {
 				t.Errorf("Unexpected ocorrences of entity id %d: %d, expected 1", id, occ)
 			}
+		}
+	}
+}
+
+func TestBatchSizeWhenLoading(t *testing.T) {
+	c, err := aetest.NewContext(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	// Zero-case check for load bounds
+	if err := Load(c, strings.NewReader("[]"), LoadSync); err != nil {
+		t.Errorf("Failed to load empty array: %v", err)
+	}
+
+	for _, i := range []int{100, 500, 600} {
+		json := new(bytes.Buffer)
+		fmt.Fprint(json, "[")
+		for j := 1; j < i; j++ {
+			fmt.Fprintf(json, `{
+				"__key__" : ["Test%d", %d],
+				"blob" : {
+					"type" : "string",
+					"indexed" : false,
+					"value" : "%s"
+				}
+			},`, i, j, strings.Repeat("0", 10*1024))
+		}
+		fmt.Fprintf(json, `{"__key__" : ["Test%d", 0]}]`, i)
+		t.Logf("Loading %d entities ...", i)
+		err := Load(c, json, LoadSync)
+		if err != nil {
+			t.Errorf("Error loaing %d entities: %v", i, err)
+		}
+		if count, err := datastore.NewQuery(fmt.Sprintf("Test%d", i)).Count(c); err != nil {
+			t.Errorf("Error checking the persisted entities: %v", err)
+		} else if count != i {
+			t.Errorf("Entity count minsmatch: %d, expected %d", count, i)
 		}
 	}
 }

@@ -33,11 +33,16 @@ var (
 )
 
 var (
+	// LoadSync is an aetools.Options that enforces data to sync
+	// after it get loaded into the datastore.
+	// This Options will cause a datastore.Get to happen
+	// for each entity loaded.
 	LoadSync = &Options{
 		GetAfterPut: true,
 	}
 )
 
+// Options allows callees to specify parameters to the Load and Dump functions.
 type Options struct {
 	// GetAfterPut indicates if we must force the Datastore to load
 	// entities to be visible for non-ancestor queries, by issuing a
@@ -69,26 +74,39 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 	if err != nil {
 		return err
 	}
-
-	keys := make([]*datastore.Key, 0, len(entities))
-	values := make([]datastore.PropertyList, 0, len(entities))
-
-	for _, e := range entities {
-		keys = append(keys, e.Key)
-		values = append(values, e.Properties)
+	if len(entities) == 0 {
+		c.Infof("Skipping load of 0 entities")
+		return nil
 	}
+	// TODO(ronoaldo): add batch size to Options
+	batchSize := 50
+	for start, end := 0, 0; start < len(entities); {
+		end += batchSize
+		if end > len(entities) {
+			end = len(entities)
+		}
+		keys := make([]*datastore.Key, 0, end-start)
+		values := make([]datastore.PropertyList, 0, cap(keys))
 
-	keys, err = datastore.PutMulti(c, keys, values)
-	if err != nil {
-		return err
-	}
+		for _, e := range entities[start:end] {
+			keys = append(keys, e.Key)
+			values = append(values, e.Properties)
+		}
 
-	if o.GetAfterPut {
-		l := make([]Entity, len(keys))
-		err := datastore.GetMulti(c, keys, l)
+		keys, err = datastore.PutMulti(c, keys, values)
 		if err != nil {
 			return err
 		}
+
+		if o.GetAfterPut {
+			l := make([]Entity, len(keys))
+			err := datastore.GetMulti(c, keys, l)
+			if err != nil {
+				return err
+			}
+		}
+
+		start = end
 	}
 
 	return nil
@@ -113,14 +131,14 @@ func DumpJSON(c appengine.Context, o *DumpOptions) (string, error) {
 // may return an error after writting bytes to w: the output is not buffered.
 func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 	var (
-		comma  = []byte(",")
-		op_b   = []byte("[")
-		cl_b   = []byte("]")
-		lf_b   = []byte("\n")
-		indent = "  "
+		comma        = []byte(",")
+		openBracket  = []byte("[")
+		closeBracket = []byte("]")
+		lineFeed     = []byte("\n")
+		indent       = "  "
 	)
 
-	w.Write(op_b)
+	w.Write(openBracket)
 	count := 0
 	last := 0
 
@@ -149,7 +167,7 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		}
 		if count > 0 {
 			w.Write(comma)
-			w.Write(lf_b)
+			w.Write(lineFeed)
 		}
 		var b []byte
 		if o.PrettyPrint {
@@ -163,7 +181,7 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 		w.Write(b)
 		count++
 	}
-	w.Write(cl_b)
+	w.Write(closeBracket)
 	return nil
 }
 
