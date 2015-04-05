@@ -47,7 +47,10 @@ func TestEndToEndTest(t *testing.T) {
 	}
 	t.Log("Dump output: ", w)
 
-	err = Load(c, w, &Options{true})
+	err = Load(c, w, &Options{
+		GetAfterPut: true,
+		BatchSize:   50,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
