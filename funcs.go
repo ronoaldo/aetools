@@ -83,7 +83,7 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 	}
 	// TODO(ronoaldo): add batch size to Options
 	batchSize := o.BatchSize
-	if batchSize < 0 {
+	if batchSize <= 0 {
 		batchSize = 50
 	}
 	for start, end := 0, 0; start < len(entities); {
