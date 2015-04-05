@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"appengine_internal"
 	datastorepb "appengine_internal/datastore"

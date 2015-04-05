@@ -285,7 +285,10 @@ func decodeProperty(c appengine.Context, k string, v interface{}, e *Entity) err
 			}
 			var dt time.Time
 			dt, err = time.Parse(DateTimeFormat, v)
-			p.Value = dt
+			if err != nil {
+				return newDecodePropertyError(k, "date", err)
+			}
+			p.Value = dt.UTC()
 		default:
 			if v, ok := m["value"]; ok {
 				err = decodeJSONPrimitiveValue(v, &p)

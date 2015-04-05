@@ -168,8 +168,8 @@ func TestLoadFixtures(t *testing.T) {
 		t.Errorf("Unexpected p.Height: %d, expected 175", p.Height)
 	}
 	b, _ := time.Parse("2006-01-02 15:04:05.999 -0700", "1986-07-19 03:00:00.000 -0000")
-	if p.Birthday != b {
-		t.Errorf("Unexpected p.Birthday: %v, expected %v", p.Birthday, b)
+	if p.Birthday.UTC() != b.UTC() {
+		t.Errorf("Unexpected p.Birthday: %v, expected %v", p.Birthday, b.UTC())
 	}
 	if len(p.Tags) != 3 {
 		t.Errorf("Unexpected p.Tags length: %v, expected %v", len(p.Tags), 3)
