@@ -30,12 +30,13 @@ func (s *StringList) Set(value string) error {
 
 // Command line options
 var (
-	cookie string                // Json encoded cookie jar.
-	host   string                // Hostname to connect to.
-	port   string                // Port to connect to.
-	debug  bool                  // Enable/disable debug information.
-	dump   string                // Kind to export
-	load   = make(StringList, 0) // StringList to load data into.
+	cookie    string                // Json encoded cookie jar.
+	host      string                // Hostname to connect to.
+	port      string                // Port to connect to.
+	debug     bool                  // Enable/disable debug information.
+	dump      string                // Kind to export
+	load      = make(StringList, 0) // StringList to load data into.
+	batchSize int                   // Size for batch operations
 )
 
 func init() {
@@ -45,6 +46,7 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "Display debug information")
 	flag.StringVar(&dump, "dump", "", "Datastore kind to export, ignored when loading")
 	flag.Var(&load, "load", "Fixture files to import, ignored when dumping")
+	flag.IntVar(&batchSize, "batch-size", 50, "Size for batch operations")
 }
 
 func main() {
@@ -75,7 +77,10 @@ func main() {
 				log.Printf("Error opening %s\n", err.Error())
 				continue
 			}
-			err = aetools.Load(c, fd, aetools.LoadSync)
+			err = aetools.Load(c, fd, &aetools.Options{
+				GetAfterPut: true,
+				BatchSize:   batchSize,
+			})
 			if err != nil {
 				log.Printf("Error loading fixture %s: %s\n", f, err.Error())
 			}

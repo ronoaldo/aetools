@@ -51,6 +51,9 @@ type transport struct {
 }
 
 func (t *transport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if debug {
+		log.Printf("Performing request to %s ...", r.URL)
+	}
 	if r.URL.Host == "localhost" || r.URL.Host == "127.0.0.1" {
 		r.URL.Host = "localhost:" + port
 		r.URL.Scheme = "http"
@@ -64,6 +67,9 @@ func (t *transport) RoundTrip(r *http.Request) (*http.Response, error) {
 	debugRequest(r)
 	resp, err := t.Wrapped.RoundTrip(r)
 	debugResponse(resp)
+	if debug {
+		log.Print("Request finished\n")
+	}
 	return resp, err
 }
 

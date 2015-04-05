@@ -48,6 +48,9 @@ type Options struct {
 	// entities to be visible for non-ancestor queries, by issuing a
 	// Get by key.
 	GetAfterPut bool
+
+	// The size for batch operations.
+	BatchSize int
 }
 
 // DumpOptions configure how the entities are dumped.
@@ -79,7 +82,10 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 		return nil
 	}
 	// TODO(ronoaldo): add batch size to Options
-	batchSize := 50
+	batchSize := o.BatchSize
+	if batchSize < 0 {
+		batchSize = 50
+	}
 	for start, end := 0, 0; start < len(entities); {
 		end += batchSize
 		if end > len(entities) {
