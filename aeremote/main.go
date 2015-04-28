@@ -36,8 +36,9 @@ var (
 	debug     bool                  // Enable/disable debug information.
 	dump      string                // Kind to export
 	load      = make(StringList, 0) // StringList to load data into.
-	batchSize int                   // Size for batch operations
-	namespace string                // Namespace to use when doing the RPCs
+	batchSize int                   // Size for batch operations.
+	namespace string                // Namespace to use when doing the RPCs.
+	pretty    bool                  // Pretty print the JSON output.
 )
 
 func init() {
@@ -49,6 +50,7 @@ func init() {
 	flag.Var(&load, "load", "Fixture files to import, ignored when dumping")
 	flag.IntVar(&batchSize, "batch-size", 50, "Size for batch operations")
 	flag.StringVar(&namespace, "namespace", "", "Namespace to use when doing the RPCs")
+	flag.BoolVar(&pretty, "pretty", false, "Pretty print the JSON output")
 }
 
 func main() {
@@ -69,7 +71,7 @@ func main() {
 	switch {
 	case dump != "":
 		log.Printf("Dumping entities of kind %s...\n", dump)
-		err = aetools.Dump(c, os.Stdout, &aetools.DumpOptions{Kind: dump, PrettyPrint: false})
+		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: dump, PrettyPrint: pretty})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -82,8 +84,7 @@ func main() {
 				continue
 			}
 			err = aetools.Load(c, fd, &aetools.Options{
-				GetAfterPut: true,
-				BatchSize:   batchSize,
+				BatchSize: batchSize,
 			})
 			if err != nil {
 				log.Printf("Error loading fixture %s: %s\n", f, err.Error())
@@ -91,7 +92,7 @@ func main() {
 			fd.Close()
 		}
 	default:
-		err = aetools.Dump(c, os.Stdout, &aetools.DumpOptions{Kind: StatKind, PrettyPrint: true})
+		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: StatKind, PrettyPrint: true})
 		if err != nil {
 			log.Fatal(err)
 		}

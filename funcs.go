@@ -42,21 +42,29 @@ var (
 	}
 )
 
-// Options allows callees to specify parameters to the Load and Dump functions.
+// Options allows callees to specify parameters to the Load function.
 type Options struct {
 	// GetAfterPut indicates if we must force the Datastore to load
 	// entities to be visible for non-ancestor queries, by issuing a
 	// Get by key.
+	// Not used when loading.
 	GetAfterPut bool
 
-	// The size for batch operations.
+	// The size for batch operations when loading/dumping
 	BatchSize int
+
+	// Kind is used to specify the kind when dumping.
+	// Not used when loading.
+	Kind string
+
+	// PrettyPrint is used to specify if the dump should beaultify the output.
+	// Not used when loading.
+	PrettyPrint bool
 }
 
-// DumpOptions configure how the entities are dumped.
+// DumpOptions is deprecated. Use Options instead.
 type DumpOptions struct {
-	Kind        string // The entity kind. Defaults to all entities ("").
-	PrettyPrint bool   // If the outuput is pretty printed. Defaults to false.
+	Options
 }
 
 // LoadJSON is a convenient wrapper to call Load using a JSON string in memory,
@@ -81,7 +89,6 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 		c.Infof("Skipping load of 0 entities")
 		return nil
 	}
-	// TODO(ronoaldo): add batch size to Options
 	batchSize := o.BatchSize
 	if batchSize <= 0 {
 		batchSize = 50
@@ -103,8 +110,10 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 		if err != nil {
 			return err
 		}
+		c.Infof("Loaded %d entities ...", len(keys))
 
 		if o.GetAfterPut {
+			c.Infof("Making a read to force consistency ...")
 			l := make([]Entity, len(keys))
 			err := datastore.GetMulti(c, keys, l)
 			if err != nil {
@@ -121,7 +130,7 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 // DumpJSON is a convenient wrapper that captures the generated JSON from Dump
 // in memory, and return it as a string. If Dump returns an error, an empty
 // string and the error are returned.
-func DumpJSON(c appengine.Context, o *DumpOptions) (string, error) {
+func DumpJSON(c appengine.Context, o *Options) (string, error) {
 	var w bytes.Buffer
 	err := Dump(c, &w, o)
 	if err != nil {
@@ -132,10 +141,10 @@ func DumpJSON(c appengine.Context, o *DumpOptions) (string, error) {
 
 // Dump exports entities from the context c using the specified Options o and
 // writing the generated JSON representations to the io.Writer w. You can configure
-// how the dump will run by using the DumpOptions parameter. If there is an error
+// how the dump will run by using the Options parameter. If there is an error
 // generating the output, or writting to the writer, it is returned. This method
 // may return an error after writting bytes to w: the output is not buffered.
-func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
+func Dump(c appengine.Context, w io.Writer, o *Options) error {
 	var (
 		comma        = []byte(",")
 		openBracket  = []byte("[")
@@ -147,15 +156,19 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 	w.Write(openBracket)
 	count := 0
 	last := 0
+	batchSize := o.BatchSize
+	if batchSize <= 0 {
+		batchSize = 100
+	}
 
-	q := datastore.NewQuery(o.Kind).Limit(100)
+	q := datastore.NewQuery(o.Kind).Limit(batchSize)
 	for i := q.Run(c); ; {
 		var e Entity
 		k, err := i.Next(&e)
 		e.Key = k
 		if err == datastore.Done {
 			c.Infof("datastore.Done: last=%d, count=%d", last, count)
-			if last == count || count-last < 100 {
+			if last == count || count-last < batchSize {
 				break
 			}
 			// This 100 batch is done, but more can be found in the next one
@@ -165,7 +178,7 @@ func Dump(c appengine.Context, w io.Writer, o *DumpOptions) error {
 				return err
 			}
 			c.Infof("restarting the query: cursor=%v", cur)
-			i = datastore.NewQuery(o.Kind).Limit(100).Start(cur).Run(c)
+			i = datastore.NewQuery(o.Kind).Limit(batchSize).Start(cur).Run(c)
 			continue
 		}
 		if err != nil {
