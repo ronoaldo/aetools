@@ -1,6 +1,7 @@
 package main
 
 import (
+	"appengine"
 	"flag"
 	"fmt"
 	"log"
@@ -37,6 +38,7 @@ var (
 	dump      string                // Kind to export
 	load      = make(StringList, 0) // StringList to load data into.
 	batchSize int                   // Size for batch operations
+	namespace string                // Namespace to use when doing the RPCs
 )
 
 func init() {
@@ -47,6 +49,7 @@ func init() {
 	flag.StringVar(&dump, "dump", "", "Datastore kind to export, ignored when loading")
 	flag.Var(&load, "load", "Fixture files to import, ignored when dumping")
 	flag.IntVar(&batchSize, "batch-size", 50, "Size for batch operations")
+	flag.StringVar(&namespace, "namespace", "", "Namespace to use when doing the RPCs")
 }
 
 func main() {
@@ -61,6 +64,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading RemoteContext: %s", err.Error())
 	}
+	c, err = appengine.Namespace(c, namespace)
+	if err != nil {
+		log.Fatal("Invalid namespace: %v", err)
+	}
+	log.Printf("Running with namespace '%s'", namespace)
 
 	switch {
 	case dump != "":
