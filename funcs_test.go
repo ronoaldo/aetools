@@ -41,7 +41,7 @@ func TestEndToEndTest(t *testing.T) {
 	}
 
 	w := new(bytes.Buffer)
-	err = Dump(c, w, &DumpOptions{"User", true})
+	err = Dump(c, w, &Options{Kind: "User", GetAfterPut: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestBatchSizeOnDump(t *testing.T) {
 			t.Fatal(err)
 		}
 		w := new(bytes.Buffer)
-		err := Dump(c, w, &DumpOptions{"User", false})
+		err := Dump(c, w, &Options{Kind: "User", PrettyPrint: false})
 		if err != nil {
 			t.Fatal(err)
 		}
