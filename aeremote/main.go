@@ -1,7 +1,6 @@
 package main
 
 import (
-	"appengine"
 	"flag"
 	"fmt"
 	"log"
@@ -64,11 +63,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading RemoteContext: %s", err.Error())
 	}
-	c, err = appengine.Namespace(c, namespace)
-	if err != nil {
-		log.Fatal("Invalid namespace: %v", err)
-	}
-	log.Printf("Running with namespace '%s'", namespace)
+	// Wrapps the context
+	c = &contextWrapper{c}
 
 	switch {
 	case dump != "":

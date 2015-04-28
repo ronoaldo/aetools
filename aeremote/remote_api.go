@@ -1,7 +1,11 @@
 package main
 
 import (
+	"appengine"
+	"appengine_internal"
+	basepb "appengine_internal/base"
 	"encoding/json"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,6 +13,25 @@ import (
 	"net/http/httputil"
 	"net/url"
 )
+
+type contextWrapper struct {
+	appengine.Context
+}
+
+func (n *contextWrapper) Call(service, method string, in, out appengine_internal.ProtoMessage, opts *appengine_internal.CallOptions) error {
+	// If we are calling the __go__.GetNamespace, avoid an RPC and use the local namespace
+	if service == "__go__" && method == "GetNamespace" {
+		if debug {
+			log.Printf("contextWrapper: __go__.GetNamespace -> %s", namespace)
+		}
+		out.(*basepb.StringProto).Value = proto.String(namespace)
+		return nil
+	}
+	if debug {
+		log.Printf("contextWrapper: making RPC %s.%s", service, method)
+	}
+	return n.Context.Call(service, method, in, out, opts)
+}
 
 func newClient() (*http.Client, error) {
 	log.Printf("Connecting with %s:%s ...", host, port)
