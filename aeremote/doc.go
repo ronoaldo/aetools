@@ -59,7 +59,7 @@ cookie value and save it on a file in the format:
 	  {
 	    "Name": "SACSID",
 	    "Value": "AJKiYc....",
-	    "Hostname": "your-app-id.appspot.com",
+	    "Hostname": "your-app-id.appspot.com"
 	  }
 	]
 
