@@ -127,7 +127,7 @@ func (vm *VM) start(c context.Context) (err error) {
 	vm.ip = findNatIP(c, instance)
 
 	// Wait until we receive 200 from the VM health check
-	healthCheck := vm.healthCheckUrl()
+	healthCheck := vm.healthCheckURL()
 	log.Debugf(c, "Checking health for IP: %v", healthCheck)
 	backoff := 3 * time.Second
 	count := 1
@@ -156,7 +156,7 @@ func (vm *VM) start(c context.Context) (err error) {
 	return nil
 }
 
-func (vm *VM) fetchInstanceIp(c context.Context) {
+func (vm *VM) fetchInstanceIP(c context.Context) {
 	project := appengine.AppID(c)
 	service, err := newComputeService(c)
 	if err != nil {
