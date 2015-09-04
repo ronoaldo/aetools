@@ -11,4 +11,4 @@
 
 // Package bigquerysync allow the AppEngine Datastore to be synced
 // with Google BigQuery.
-package bigquerysync
+package bigquerysync // import "ronoaldo.gopkg.net/aetools/bigquerysync"

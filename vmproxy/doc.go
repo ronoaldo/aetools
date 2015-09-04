@@ -15,4 +15,4 @@ stateless batch jobs. Some examples include, daily report generation,
 statistics, image processing, vídeo transcoding and others.
 
 */
-package vmproxy
+package vmproxy // import "ronoaldo.gopkg.net/aetools/vmproxy"

@@ -71,4 +71,4 @@ The caveat is that your test code will also rely directly in the appengine_inter
 package.
 
 */
-package aestubs
+package aestubs // import "ronoaldo.gopkg.net/aetools/aestubs"

@@ -70,4 +70,4 @@ state quick and easy. This tool can also help setting up Q.A. or Production
 apps, but should be used with care.
 
 */
-package aetools
+package aetools // import "ronoaldo.gopkg.net/aetools"

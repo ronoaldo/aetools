@@ -71,4 +71,4 @@ Save that file on a secure place, and pass the parameters -host, -port and
 CAUTION: This will perform a dump or load with the specified appid datastore,
 and there is no way to rollback the operation.
 */
-package main
+package main // import "ronoaldo.gopkg.net/aetools/aeremote"
