@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 	"google.golang.org/appengine/log"
 	stdlog "log"
 	"net/http"
@@ -14,20 +13,20 @@ import (
 )
 
 const (
-	DefaultImageName = "debian-8-jessie-v20150818"
+	DefaultImageName   = "debian-8-jessie-v20150818"
 	DefaultMachineType = "n1-standard-1"
-	ResourcePrefix = "https://www.googleapis.com/compute/v1/projects"
+	ResourcePrefix     = "https://www.googleapis.com/compute/v1/projects"
 )
 
 // Instance represents basic information about a single Compute Engine VM.
 type Instance struct {
 	// Name is the VM unique Name.
 	// Mandatory, and must be unique to the project.
-	Name  string
+	Name string
 
 	// Compute Engine Zone, where the VM will launch.
 	// Mandatory.
-	Zone  string
+	Zone string
 
 	// Image to use to boot the instance.
 	// Defaults to debian-8-backports if empty.
@@ -38,7 +37,7 @@ type Instance struct {
 
 	// Optional instance tags. Defaults to http-server.
 	// Use this to setup firewall rules.
-	Tags  []string
+	Tags []string
 
 	// Optional startup script URL to be added to the VM.
 	StartupScript    string
@@ -73,15 +72,15 @@ type VM struct {
 	Instance Instance
 
 	// Path to forward requests to. Mandatory.
-	Path     string
+	Path string
 	// Path used to check if the VM is ready to serve traffic.
 	// Defaults to Path.
 	HealthPath string
 	// Port to forward requests to. Defaults to 80 if 0.
-	Port     int
+	Port int
 
 	// Instance IP address, filled once the instance boots.
-	ip       string
+	ip string
 }
 
 // ServeHTTP handles the HTTP request, by forwarding it to the target VM.
@@ -105,13 +104,12 @@ func (vm *VM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (vm *VM) forward(c context.Context, w http.ResponseWriter, r *http.Request) {
 	log.Debugf(c, "Forwarding request to instance at %s ...", vm.endpoint())
 	proxy := httputil.NewSingleHostReverseProxy(vm.endpoint())
-	proxy.Transport = &urlfetch.Transport{
-		Context: appengine.NewContext(r),
-	}
+	proxy.Transport = newSocketTransport(c)
 	var buff bytes.Buffer
-	proxy.ErrorLog = stdlog.New(&buff, "[proxy] ", stdlog.LstdFlags | stdlog.Lshortfile)
+	proxy.ErrorLog = stdlog.New(&buff, "[proxy] ", stdlog.LstdFlags|stdlog.Lshortfile)
 	proxy.ServeHTTP(w, r)
 	if buff.String() != "" {
+		// TODO:(ronoaldo) diplay the upstream error to the user, some how.
 		log.Errorf(c, buff.String())
 	}
 }
@@ -123,8 +121,8 @@ func (vm *VM) endpoint() *url.URL {
 	}
 	return &url.URL{
 		Scheme: "http",
-		Host: fmt.Sprintf("%s:%d", vm.ip, vm.Port),
-		Path: vm.Path,
+		Host:   fmt.Sprintf("%s:%d", vm.ip, vm.Port),
+		Path:   vm.Path,
 	}
 }
 
@@ -137,15 +135,15 @@ func (vm *VM) healthCheckUrl() *url.URL {
 	}
 	return &url.URL{
 		Scheme: "http",
-		Host: fmt.Sprintf("%s:%d", vm.ip, vm.Port),
-		Path: vm.HealthPath,
+		Host:   fmt.Sprintf("%s:%d", vm.ip, vm.Port),
+		Path:   vm.HealthPath,
 	}
 }
 
 // isRunning checks if the instance state is running.
 func (vm *VM) isRunning(c context.Context) bool {
 	log.Debugf(c, "Checking if instance is running... (ip=%v)", vm.ip)
-	if vm.ip != "" {
+	if vm.ip == "" {
 		// We already have the IP
 		vm.fetchInstanceIp(c)
 		log.Debugf(c, "VM ip updated to: %v", vm.ip)

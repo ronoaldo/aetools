@@ -1,14 +1,16 @@
 package vmproxy
 
 import (
-	"net/http"
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"golang.org/x/net/context"
+	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/socket"
 	"google.golang.org/appengine/urlfetch"
-	compute "google.golang.org/api/compute/v1"
+	"net"
+	"net/http"
 	"time"
 )
 
@@ -26,15 +28,26 @@ func newComputeService(c context.Context) (service *compute.Service, err error) 
 	return compute.New(client)
 }
 
+func newSocketTransport(c context.Context) *http.Transport {
+	return &http.Transport{
+		Dial: func(net, addr string) (net.Conn, error) {
+			return socket.Dial(c, net, addr)
+		},
+	}
+}
+
 // Launchages a new Compute Engine VM and wait until the path/port is ready.
 //
 // References:
 //	https://github.com/google/google-api-go-client/blob/master/examples/compute.go
 //	https://godoc.org/golang.org/x/oauth2/google#example-AppEngineTokenSource
 func (vm *VM) start(c context.Context) (err error) {
-	project := appengine.AppID(c)
 	service, err := newComputeService(c)
-	client := urlfetch.Client(c)
+
+	project := appengine.AppID(c)
+	client := &http.Client{
+		Transport: newSocketTransport(c),
+	}
 	if err != nil {
 		return err
 	}
@@ -65,11 +78,11 @@ func (vm *VM) start(c context.Context) (err error) {
 				Network: ResourcePrefix + "/" + project + "/global/networks/default",
 			},
 		},
-		Metadata : &compute.Metadata{},
+		Metadata: &compute.Metadata{},
 		Tags: &compute.Tags{
 			Items: []string{"http-server"},
 		},
-		Scheduling: &compute.Scheduling {
+		Scheduling: &compute.Scheduling{
 			Preemptible: !vm.Instance.NotPreemptible,
 		},
 	}
@@ -78,13 +91,13 @@ func (vm *VM) start(c context.Context) (err error) {
 	}
 	if vm.Instance.StartupScript != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
-			Key: "startup-script",
+			Key:   "startup-script",
 			Value: &vm.Instance.StartupScript,
 		})
 	}
 	if vm.Instance.StartupScriptURL != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
-			Key: "startup-script-url",
+			Key:   "startup-script-url",
 			Value: &vm.Instance.StartupScriptURL,
 		})
 	}

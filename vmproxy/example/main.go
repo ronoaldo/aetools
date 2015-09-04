@@ -1,7 +1,8 @@
 package example
 
 import (
-	"fmt"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"net/http"
 	"ronoaldo.gopkg.net/aetools/vmproxy"
 )
@@ -12,22 +13,27 @@ apt-get update && apt-get upgrade --yes;
 apt-get install nginx --yes
 `
 
-	nginx = &vmproxy.VM {
+	nginx = &vmproxy.VM{
 		Path: "/",
-		Instance: vmproxy.Instance {
-			Name: "backend",
-			Zone: "us-central1-a",
-			MachineType: "f1-micro",
+		Instance: vmproxy.Instance{
+			Name:          "backend",
+			Zone:          "us-central1-a",
+			MachineType:   "f1-micro",
 			StartupScript: startupScript,
 		},
 	}
 )
 
 func init() {
-	// http.HandleFunc("/", Index)
+	http.HandleFunc("/_ah/start", AhStart)
+	http.HandleFunc("/_ah/stop", AhStop)
 	http.Handle("/", nginx)
 }
 
-func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, `<a href="/nginx/">Access VM Proxy</a>`)
+func AhStart(w http.ResponseWriter, r *http.Request) {
+	log.Debugf(appengine.NewContext(r), "New instance started")
+}
+
+func AhStop(w http.ResponseWriter, r *http.Request) {
+	log.Debugf(appengine.NewContext(r), "Instance stopped")
 }
