@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -47,6 +48,9 @@ type Instance struct {
 	// Use this to setup firewall rules.
 	Tags []string
 
+	// Metadata to add to the instance description.
+	Metadata map[string]string
+
 	// Optional startup script URL to be added to the VM.
 	StartupScript    string
 	StartupScriptURL string
@@ -60,6 +64,9 @@ type Instance struct {
 func (i *Instance) image() string {
 	if i.Image == "" {
 		return ResourcePrefix + "/debian-cloud/global/images/" + DefaultImageName
+	}
+	if strings.HasPrefix(i.Image, ResourcePrefix) {
+		return i.Image
 	}
 	return ResourcePrefix + "/global/images/" + i.Image
 }

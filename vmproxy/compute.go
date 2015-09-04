@@ -92,6 +92,13 @@ func (vm *VM) start(c context.Context) (err error) {
 	for _, tag := range vm.Instance.Tags {
 		instance.Tags.Items = append(instance.Tags.Items, tag)
 	}
+	for k, v := range vm.Instance.Metadata {
+		var value = v
+		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
+			Key: k,
+			Value: &value,
+		})
+	}
 	if vm.Instance.StartupScript != "" {
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
 			Key:   "startup-script",
