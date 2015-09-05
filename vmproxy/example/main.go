@@ -8,6 +8,7 @@ import (
 	"google.golang.org/appengine/log"
 	"net/http"
 	"ronoaldo.gopkg.net/aetools/vmproxy"
+	"sync"
 )
 
 var (
@@ -64,10 +65,28 @@ func init() {
 	http.Handle("/echo/", echo)
 }
 
+// AhStart attempts to prevent a 503 error when servicing a loading request.
 func AhStart(w http.ResponseWriter, r *http.Request) {
 	log.Debugf(appengine.NewContext(r), "New instance started")
 }
 
+// AhStop terminates all backend instance virtual machines.
 func AhStop(w http.ResponseWriter, r *http.Request) {
-	log.Debugf(appengine.NewContext(r), "Instance stopped")
+	c := appengine.NewContext(r)
+	log.Debugf(c, "Terminating instances ...")
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		if err := echo.Stop(c); err != nil {
+			log.Warningf(c, "Error terminating echo vm: %v", err)
+		}
+	}()
+	go func() {
+		if err := nginx.Stop(c); err != nil {
+			log.Warningf(c, "Error terminating nginx: %v", err)
+		}
+	}()
+	log.Debugf(c, "Waiting for termination to complete...")
+	wg.Wait()
+	log.Debugf(c, "Instance termination completed")
 }

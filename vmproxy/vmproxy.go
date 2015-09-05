@@ -105,7 +105,7 @@ func (vm *VM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debugf(c, "Servicing a new request with VM Proxy %s/%s", vm.Instance.Name, vm.ip)
 	if !vm.isRunning(c) {
 		log.Debugf(c, "VM not running, starting a new one ...")
-		if err := vm.start(c); err != nil {
+		if err := vm.Start(c); err != nil {
 			log.Errorf(c, "Error starting VM: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to start VM: %v", err), http.StatusInternalServerError)
 			return

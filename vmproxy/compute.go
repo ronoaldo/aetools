@@ -39,20 +39,20 @@ func newSocketTransport(c context.Context) *http.Transport {
 	}
 }
 
-// Launchages a new Compute Engine VM and wait until the path/port is ready.
+// Start launches a new Compute Engine VM and wait until the health path is ready.
 //
 // References:
 //	https://github.com/google/google-api-go-client/blob/master/examples/compute.go
 //	https://godoc.org/golang.org/x/oauth2/google#example-AppEngineTokenSource
-func (vm *VM) start(c context.Context) (err error) {
+func (vm *VM) Start(c context.Context) (err error) {
 	service, err := newComputeService(c)
+	if err != nil {
+		return err
+	}
 
 	project := appengine.AppID(c)
 	client := &http.Client{
 		Transport: newSocketTransport(c),
-	}
-	if err != nil {
-		return err
 	}
 	// Setup new instance request
 	instance := &compute.Instance{
@@ -123,6 +123,7 @@ func (vm *VM) start(c context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		time.Sleep(1 * time.Second)
 	}
 	log.Debugf(c, "Operation result: %v", op)
 
@@ -161,6 +162,30 @@ func (vm *VM) start(c context.Context) (err error) {
 	}
 	log.Debugf(c, "Instance startup done.")
 	return nil
+}
+
+// Stop deletes terminates and remove the instance.
+func (vm *VM) Stop(c context.Context) (err error) {
+	log.Debugf(c, "Stopping instance ...")
+	service, err := newComputeService(c)
+	if err != nil {
+		return err
+	}
+	project := appengine.AppID(c)
+	op, err := service.Instances.Delete(project, vm.Instance.Zone, vm.Instance.Name).Do()
+	if err != nil {
+		return err
+	}
+	log.Debugf(c, "Waiting for operation to complete")
+	for op.Status != "DONE" {
+		op, err = service.ZoneOperations.Get(project, vm.Instance.Zone, op.Name).Do()
+		if err != nil {
+			return err
+		}
+		time.Sleep(1 * time.Second)
+	}
+	log.Debugf(c, "Operation result: %v", op)
+	return
 }
 
 func (vm *VM) fetchInstanceIP(c context.Context) {
