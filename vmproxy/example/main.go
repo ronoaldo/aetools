@@ -47,9 +47,9 @@ spec:
 	echo = &vmproxy.VM{
 		Path: "/echo/",
 		Instance: vmproxy.Instance{
-			Name: "echo",
-			Zone: "us-central1-a",
-			Image: vmproxy.ResourcePrefix + "/google-containers/global/images/container-vm-v20150806",
+			Name:        "echo",
+			Zone:        "us-central1-a",
+			Image:       vmproxy.ResourcePrefix + "/google-containers/global/images/container-vm-v20150806",
 			MachineType: "f1-micro",
 			Metadata: map[string]string{
 				"google-container-manifest": pod,

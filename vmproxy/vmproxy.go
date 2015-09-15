@@ -19,12 +19,12 @@ import (
 const (
 	// DefaultImageName, currently points to Debian Jessie.
 	// TODO(ronoaldo): discover latest debian-8 VM name when launching.
-	DefaultImageName   = "debian-8-jessie-v20150818"
+	DefaultImageName = "debian-8-jessie-v20150818"
 	// DefaultMachineType used to launch an instance.
 	DefaultMachineType = "n1-standard-1"
 	// ResourcePrefix is the prefix URL to build resource URIs,
 	// such as image, disks and instance URIs.
-	ResourcePrefix     = "https://www.googleapis.com/compute/v1/projects"
+	ResourcePrefix = "https://www.googleapis.com/compute/v1/projects"
 )
 
 // Instance represents basic information about a single Compute Engine VM.
@@ -57,6 +57,10 @@ type Instance struct {
 
 	// Marks the instance as a preemptible VM.
 	NotPreemptible bool
+
+	// Scopes to be used when creating the instance.
+	// No scopes by default.
+	Scopes []string
 }
 
 // image returns the configured instance image,

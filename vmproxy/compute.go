@@ -95,7 +95,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 	for k, v := range vm.Instance.Metadata {
 		var value = v
 		instance.Metadata.Items = append(instance.Metadata.Items, &compute.MetadataItems{
-			Key: k,
+			Key:   k,
 			Value: &value,
 		})
 	}
@@ -110,6 +110,14 @@ func (vm *VM) Start(c context.Context) (err error) {
 			Key:   "startup-script-url",
 			Value: &vm.Instance.StartupScriptURL,
 		})
+	}
+	if len(vm.Instance.Scopes) > 0 {
+		instance.ServiceAccounts = []*compute.ServiceAccount{
+			{
+				Email:  "default",
+				Scopes: vm.Instance.Scopes,
+			},
+		}
 	}
 
 	log.Debugf(c, "Launching new instance: %#v", instance)
