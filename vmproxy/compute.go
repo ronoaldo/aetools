@@ -34,7 +34,11 @@ func newComputeService(c context.Context) (service *compute.Service, err error) 
 func newSocketTransport(c context.Context) *http.Transport {
 	return &http.Transport{
 		Dial: func(net, addr string) (net.Conn, error) {
-			return socket.Dial(c, net, addr)
+			c, err := socket.Dial(c, net, addr)
+			if c != nil && err == nil {
+				c.SetDeadline(time.Now().Add(1 * time.Hour))
+			}
+			return c, err
 		},
 	}
 }
