@@ -4,6 +4,7 @@
 package vmproxy
 
 import (
+	"errors"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -15,6 +16,10 @@ import (
 	"net"
 	"net/http"
 	"time"
+)
+
+var (
+	ErrStartupTimeout = errors.New("vmproxy: startup timeout")
 )
 
 // newComputeService returns a new Compute Engine API Client,
@@ -61,7 +66,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 	// Setup new instance request
 	instance := &compute.Instance{
 		Name:        vm.Instance.Name,
-		Description: "VM Proxy managed compute instance.",
+		Description: "VM Proxy managed compute engine instance.",
 		MachineType: ResourcePrefix + "/" + project + "/zones/" + vm.Instance.Zone + "/machineTypes/" + vm.Instance.machineType(),
 		Disks: []*compute.AttachedDisk{
 			{
@@ -138,14 +143,38 @@ func (vm *VM) Start(c context.Context) (err error) {
 		time.Sleep(1 * time.Second)
 	}
 	log.Debugf(c, "Operation result: %v", op)
+	if op.Error != nil {
+		log.Warningf(c, "Operation errors detected: %v", op.Error)
+	}
 
 	// Fetch instance IP address
 	instance, err = service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do()
 	if err != nil {
 		return err
 	}
-	vm.ip = findNatIP(c, instance)
+	// Check if the instance state is running. If not, i.e., if it is
+	// terminated, we attempt to relaunch it
+	log.Debugf(c, "Checking for instance state ...")
+	for instance.Status != "RUNNING" {
+		switch instance.Status {
+		case "PROVISIONING", "STAGING", "STOPPING":
+			log.Debugf(c, "Waiting for state transition to complete: %v", instance.Status)
+		case "TERMINATED":
+			log.Debugf(c, "Restarting previous instance in TERMINATED state ...")
+			// TODO(ronoaldo): maybe we should monitor this operation as well?
+			if _, err := service.Instances.Start(project, vm.Instance.Zone, vm.Instance.Name).Do(); err != nil {
+				return err
+			}
+		}
+		// TODO(ronoaldo): review all sleeps, like this one :-/
+		time.Sleep(1 * time.Second)
+		log.Debugf(c, "Checking instance state again ...")
+		if instance, err = service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do(); err != nil {
+			return err
+		}
+	}
 
+	vm.ip = findNatIP(c, instance)
 	// Wait until we receive 200 from the VM health check
 	healthCheck := vm.healthCheckURL()
 	log.Debugf(c, "Checking health for IP: %v", healthCheck)
@@ -171,6 +200,10 @@ func (vm *VM) Start(c context.Context) (err error) {
 		}
 		log.Debugf(c, "> Waitning %s for retry ...", sleepFactor)
 		time.Sleep(sleepFactor)
+		if sleepFactor > time.Minute {
+			log.Warningf(c, "> Unable to launch VM: startup timed out!")
+			return ErrStartupTimeout
+		}
 	}
 	log.Debugf(c, "Instance startup done.")
 	return nil
