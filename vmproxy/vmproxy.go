@@ -55,6 +55,9 @@ type Instance struct {
 	StartupScript    string
 	StartupScriptURL string
 
+	// BootDiskSize in base-2 GB
+	BootDiskSize int64
+
 	// Marks the instance as a preemptible VM.
 	NotPreemptible bool
 

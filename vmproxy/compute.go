@@ -75,6 +75,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 				Type:       "PERSISTENT",
 				InitializeParams: &compute.AttachedDiskInitializeParams{
 					DiskName:    vm.Instance.Name + "-boot-disk",
+					DiskSizeGb:  vm.Instance.BootDiskSize,
 					SourceImage: vm.Instance.image(),
 				},
 			},
