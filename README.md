@@ -35,3 +35,11 @@ Datastore, currently via the App Engine Remote API.
 The `aetools/bundle` package contains a ready-to-use Google App Engine webapp
 providing handlers to create tables and sync the Datastore directly to Bigquery,
 using the `aetools` and `aetools/bigquerysync` packages.
+
+# vmproxy
+
+[![GoDoc](https://godoc.org/ronoaldo.gopkg.net/aetools/vmproxy?status.png)](https://godoc.org/ronoaldo.gopkg.net/aetools/vmproxy)
+
+The `aetools/vmproxy` package contains a simple utility to allow on-demand,
+low-traffic handlers to dispatch requests to a reusable compute engine
+instance.
