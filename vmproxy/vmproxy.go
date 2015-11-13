@@ -164,11 +164,6 @@ func (vm *VM) healthCheckURL() *url.URL {
 
 // isRunning checks if the instance state is running.
 func (vm *VM) isRunning(c context.Context) bool {
-	log.Debugf(c, "Checking if instance is running... (ip=%v)", vm.ip)
-	if vm.ip == "" {
-		// We already have the IP
-		vm.fetchInstanceIP(c)
-		log.Debugf(c, "VM ip updated to: %v", vm.ip)
-	}
-	return vm.ip != ""
+	// TODO(ronoaldo): we need a smarter way to check this...
+	return vm.PublicIP(c) != ""
 }

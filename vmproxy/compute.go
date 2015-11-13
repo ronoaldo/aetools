@@ -135,15 +135,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Debugf(c, "> Waiting for operation to reach status DONE (status=%s)", op.Status)
-	for op.Status != "DONE" {
-		op, err = service.ZoneOperations.Get(project, vm.Instance.Zone, op.Name).Do()
-		if err != nil {
-			return err
-		}
-		time.Sleep(1 * time.Second)
-	}
-	log.Debugf(c, "Operation result: %v", op)
+	vm.waitUntilDone(service, project, op)
 	if op.Error != nil {
 		log.Warningf(c, "Operation errors detected: %v", op.Error)
 	}
@@ -169,7 +161,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 		}
 		// TODO(ronoaldo): review all sleeps, like this one :-/
 		time.Sleep(1 * time.Second)
-		log.Debugf(c, "Checking instance state again ...")
+		log.Debugf(c, "> Reloading instance state ...")
 		if instance, err = service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do(); err != nil {
 			return err
 		}
@@ -178,7 +170,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 	vm.ip = findNatIP(c, instance)
 	// Wait until we receive 200 from the VM health check
 	healthCheck := vm.healthCheckURL()
-	log.Debugf(c, "Checking health for IP: %v", healthCheck)
+	log.Debugf(c, "Checking instance health at: %v", healthCheck)
 	backoff := 3 * time.Second
 	count := 1
 	for {
@@ -210,9 +202,10 @@ func (vm *VM) Start(c context.Context) (err error) {
 	return nil
 }
 
-// Stop deletes terminates and remove the instance.
-func (vm *VM) Stop(c context.Context) (err error) {
-	log.Debugf(c, "Stopping instance ...")
+// Delete put's the instance in TERMINATED state and remove it.
+// All attached disks marked for deletion are also removed.
+func (vm *VM) Delete(c context.Context) (err error) {
+	log.Debugf(c, "Deleting instance ...")
 	service, err := newComputeService(c)
 	if err != nil {
 		return err
@@ -222,7 +215,72 @@ func (vm *VM) Stop(c context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Debugf(c, "Waiting for operation to complete")
+	// TODO(ronoaldo): check the operation result for operation errors.
+	return vm.waitUntilDone(service, project, op)
+}
+
+// Stop puts the instance in the TERMINATED state, but does not delete it.
+func (vm *VM) Stop(c context.Context) (err error) {
+	log.Debugf(c, "Stopping instance ...")
+	service, err := newComputeService(c)
+	if err != nil {
+		return err
+	}
+	project := appengine.AppID(c)
+	op, err := service.Instances.Stop(project, vm.Instance.Zone, vm.Instance.Name).Do()
+	if err != nil {
+		return err
+	}
+	// TODO(ronoaldo): check the operation result for operation errors.
+	return vm.waitUntilDone(service, project, op)
+}
+
+// PublicIP returns the current instance IP. The value is cached in-memory,
+// so it may return stale results.
+func (vm *VM) PublicIP(c context.Context) string {
+	if vm.ip == "" {
+		project := appengine.AppID(c)
+		service, err := newComputeService(c)
+		if err != nil {
+			log.Errorf(c, "Error initializing service: %v", err)
+			return ""
+		}
+		instance, err := service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do()
+		if err != nil {
+			log.Errorf(c, "Error fetching instance IP: %v", err)
+			return ""
+		}
+		vm.ip = findNatIP(c, instance)
+	}
+	return vm.ip
+}
+
+// findNatIP look up the instance access configurations and returns the
+// public NAT IP, if one is found. An empty string is returned if the
+// instance or the access configuration is nil, or if no public address
+// (NAT) is present.
+func findNatIP(c context.Context, instance *compute.Instance) string {
+	if instance == nil {
+		log.Debugf(c, "* Instance is nil!")
+		return ""
+	}
+	if len(instance.NetworkInterfaces) < 1 {
+		log.Debugf(c, "* No network interfaces!")
+		return ""
+	}
+	for _, config := range instance.NetworkInterfaces[0].AccessConfigs {
+		log.Debugf(c, "* Checking for connection ... %v", config)
+		if config.NatIP != "" {
+			log.Debugf(c, "* Found NAT IP: %v", config.NatIP)
+			return config.NatIP
+		}
+	}
+	return ""
+}
+
+// waitUntilDone blocks until the operation reaches the DONE status.
+// An error is returned if there is an HTTP failure contacting the API.
+func (vm *VM) waitUntilDone(service *compute.Service, project string, op *compute.Operation) (err error) {
 	for op.Status != "DONE" {
 		op, err = service.ZoneOperations.Get(project, vm.Instance.Zone, op.Name).Do()
 		if err != nil {
@@ -230,40 +288,5 @@ func (vm *VM) Stop(c context.Context) (err error) {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	log.Debugf(c, "Operation result: %v", op)
-	return
-}
-
-func (vm *VM) fetchInstanceIP(c context.Context) {
-	project := appengine.AppID(c)
-	service, err := newComputeService(c)
-	if err != nil {
-		log.Errorf(c, "Error initializing service: %v", err)
-		return
-	}
-	instance, err := service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do()
-	if err != nil {
-		log.Errorf(c, "Error fetching instance IP: %v", err)
-		return
-	}
-	vm.ip = findNatIP(c, instance)
-}
-
-func findNatIP(c context.Context, instance *compute.Instance) string {
-	if instance == nil {
-		log.Debugf(c, "> Instance is nil!")
-		return ""
-	}
-	if len(instance.NetworkInterfaces) < 1 {
-		log.Debugf(c, "> No network interfaces!")
-		return ""
-	}
-	for _, config := range instance.NetworkInterfaces[0].AccessConfigs {
-		log.Debugf(c, "> Checking for connection ... %v", config)
-		if config.NatIP != "" {
-			log.Debugf(c, "> Found NAT IP: %v", config.NatIP)
-			return config.NatIP
-		}
-	}
-	return ""
+	return nil
 }
