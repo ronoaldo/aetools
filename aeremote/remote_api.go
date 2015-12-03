@@ -4,72 +4,35 @@
 package main
 
 import (
-	"appengine"
-	"appengine_internal"
-	basepb "appengine_internal/base"
-	"encoding/json"
-	"github.com/golang/protobuf/proto"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httputil"
-	"net/url"
+
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/google"
 )
 
-type contextWrapper struct {
-	appengine.Context
-}
-
-func (n *contextWrapper) Call(service, method string, in, out appengine_internal.ProtoMessage, opts *appengine_internal.CallOptions) error {
-	// If we are calling the __go__.GetNamespace, avoid an RPC and use the local namespace
-	if service == "__go__" && method == "GetNamespace" {
-		if debug {
-			log.Printf("contextWrapper: __go__.GetNamespace -> %s", namespace)
-		}
-		out.(*basepb.StringProto).Value = proto.String(namespace)
-		return nil
-	}
-	if debug {
-		log.Printf("contextWrapper: making RPC %s.%s", service, method)
-	}
-	return n.Context.Call(service, method, in, out, opts)
+var remoteApiScopes = []string{
+	"https://www.googleapis.com/auth/appengine.apis",
+	"https://www.googleapis.com/auth/userinfo.email",
+	"https://www.googleapis.com/auth/cloud.platform",
 }
 
 func newClient() (*http.Client, error) {
 	log.Printf("Connecting with %s:%s ...", host, port)
-	u, err := url.Parse("http://" + host + "/")
-	if err != nil {
-		return nil, err
-	}
-
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if cookie != "" {
-		log.Printf("Using cookies from %s", cookie)
-		b, err := ioutil.ReadFile(cookie)
-		if err != nil {
-			log.Printf("Unable to load cookie file: %s", err.Error())
+	if host == "localhost" || host == "127.0.0.1" {
+		log.Printf("Using a local connection ...")
+		hc := &http.Client{
+			Transport: &transport{http.DefaultTransport},
 		}
-		if err == nil {
-			cs := make([]*http.Cookie, 0)
-			err = json.Unmarshal(b, &cs)
-			if err != nil {
-				log.Fatal(err)
-			}
-			jar.SetCookies(u, cs)
-		}
+		return hc, nil
 	}
-
-	client := &http.Client{
-		Transport: &transport{http.DefaultTransport},
-		Jar:       jar,
+	log.Printf("Autodetecting credentials do use ...")
+	hc, err := google.DefaultClient(context.Background(), remoteApiScopes...)
+	if hc != nil {
+		hc.Transport = &transport{hc.Transport}
 	}
-
-	return client, nil
+	return hc, err
 }
 
 type transport struct {
@@ -90,8 +53,8 @@ func (t *transport) RoundTrip(r *http.Request) (*http.Response, error) {
 			Domain: r.URL.Host,
 		})
 	}
-	debugRequest(r)
 	resp, err := t.Wrapped.RoundTrip(r)
+	debugRequest(r)
 	debugResponse(resp)
 	if debug {
 		log.Print("Request finished\n")

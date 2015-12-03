@@ -5,15 +5,14 @@ package bigquerysync
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
 
-	"code.google.com/p/google-api-go-client/bigquery/v2"
-
-	"appengine"
-	"appengine/datastore"
+	"google.golang.org/api/bigquery/v2"
+	"google.golang.org/appengine/datastore"
 )
 
 const (
@@ -48,7 +47,7 @@ type StatByKind struct {
 
 // SchemaForKind guess the schema based on the datastore
 // statistics for the specified entity kind.
-func SchemaForKind(c appengine.Context, kind string) (*bigquery.TableSchema, error) {
+func SchemaForKind(c context.Context, kind string) (*bigquery.TableSchema, error) {
 	var (
 		k         *datastore.Key
 		err       error

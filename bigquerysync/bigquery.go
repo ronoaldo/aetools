@@ -4,17 +4,18 @@
 package bigquerysync
 
 import (
-	"appengine"
 	"bytes"
-	"code.google.com/p/google-api-go-client/bigquery/v2"
-	"code.google.com/p/google-api-go-client/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/bigquery/v2"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/appengine/log"
 	"net/http"
 	"regexp"
 	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/serviceaccount"
 	"strings"
 	"time"
 )
@@ -49,9 +50,9 @@ type InsertAllRequest struct {
 
 // IngestToBigQuery takes an aetools.Entity, and ingest it's JSON representation
 // into the configured project.
-func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*aetools.Entity, exclude string) error {
+func IngestToBigQuery(c context.Context, project, dataset string, entities []*aetools.Entity, exclude string) error {
 	if len(entities) == 0 {
-		c.Infof("Ignoring ingestion of 0 entities")
+		log.Infof(c, "Ignoring ingestion of 0 entities")
 		return nil
 	}
 	r := InsertAllRequest{
@@ -72,18 +73,18 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 	}
 	client, err := NewClient(c)
 	if err != nil {
-		c.Errorf("Error initializing client %v", err)
+		log.Errorf(c, "Error initializing client %v", err)
 		return err
 	}
 	url := fmt.Sprintf(InsertAllURL, project, dataset, entities[0].Key.Kind())
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		c.Errorf("Error posting: %v", err)
+		log.Errorf(c, "Error posting: %v", err)
 		return err
 	}
 	err = googleapi.CheckResponse(resp)
 	if err != nil {
-		c.Errorf("Request error for %d entities: %v", len(entities), err)
+		log.Errorf(c, "Request error for %d entities: %v", len(entities), err)
 		return err
 	}
 	// Decodes the response value to check for insert errors
@@ -115,7 +116,7 @@ func IngestToBigQuery(c appengine.Context, project, dataset string, entities []*
 // It returns the new-ly created bigquery.Table and a nil error, or a nil
 // table and the error value generated during the schema parsing, the client
 // configuration or the table call.
-func CreateTableForKind(c appengine.Context, project, dataset, kind string) (*bigquery.Table, error) {
+func CreateTableForKind(c context.Context, project, dataset, kind string) (*bigquery.Table, error) {
 	schema, err := SchemaForKind(c, kind)
 	if err != nil {
 		return nil, err
@@ -143,11 +144,11 @@ func CreateTableForKind(c appengine.Context, project, dataset, kind string) (*bi
 // the application Service Account. This is a variable to allow for mocking
 // in unit tests, to use a different service account, or to use a custom
 // OAuth implementation.
-var NewClient func(c appengine.Context) (*http.Client, error) = newServiceAccountClient
+var NewClient func(c context.Context) (*http.Client, error) = newServiceAccountClient
 
 // newServiceAccountClient returns a service account authenticated http.Client.
-func newServiceAccountClient(c appengine.Context) (*http.Client, error) {
-	client, err := serviceaccount.NewClient(c, BigqueryScope)
+func newServiceAccountClient(c context.Context) (*http.Client, error) {
+	client, err := google.DefaultClient(c, BigqueryScope)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,7 @@ func newServiceAccountClient(c appengine.Context) (*http.Client, error) {
 
 // entityToRow converts an aetools.Entity to a map suitable for ingesting
 // into bigquery as a row.
-func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[string]interface{}, error) {
+func entityToRow(c context.Context, e *aetools.Entity, exclude string) (map[string]interface{}, error) {
 	row, err := e.Map()
 	if err != nil {
 		return nil, err
@@ -167,7 +168,7 @@ func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[st
 	}
 	excludeRe, err := regexp.Compile(exclude)
 	if err != nil {
-		c.Warningf("Unable to parse exclude regexp: %v", err)
+		log.Warningf(c, "Unable to parse exclude regexp: %v", err)
 		// Invalid user suplied regexp: exclude none.
 		excludeRe = regexp.MustCompile("^$")
 	}
@@ -194,7 +195,7 @@ func entityToRow(c appengine.Context, e *aetools.Entity, exclude string) (map[st
 					// date and time.
 					_, err := time.Parse(aetools.DateTimeFormat, v["value"].(string))
 					if err != nil {
-						c.Warningf("Ignoring invalid timestamp field: %s: %+v (err=%s)", k, v, err.Error())
+						log.Warningf(c, "Ignoring invalid timestamp field: %s: %+v (err=%s)", k, v, err.Error())
 						delete(row, k)
 						continue
 					}

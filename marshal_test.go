@@ -4,16 +4,17 @@
 package aetools
 
 import (
+	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/datastore"
 	"testing"
-
-	"ronoaldo.gopkg.net/aetools/aestubs"
-
-	"appengine/datastore"
 )
 
 func TestKeyPath(t *testing.T) {
-	c := aestubs.NewContext(nil, t)
-	defer c.Clean()
+	c, clean, err := aetest.NewContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clean()
 
 	keys := []*datastore.Key{
 		datastore.NewKey(c, "Incomplete", "", 0, nil),

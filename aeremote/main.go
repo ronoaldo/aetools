@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 
-	"appengine/remote_api"
+	"google.golang.org/appengine/remote_api"
 
 	"ronoaldo.gopkg.net/aetools"
 )
@@ -33,26 +33,22 @@ func (s *StringList) Set(value string) error {
 
 // Command line options
 var (
-	cookie    string                // Json encoded cookie jar.
 	host      string                // Hostname to connect to.
 	port      string                // Port to connect to.
 	debug     bool                  // Enable/disable debug information.
 	dump      string                // Kind to export
 	load      = make(StringList, 0) // StringList to load data into.
 	batchSize int                   // Size for batch operations.
-	namespace string                // Namespace to use when doing the RPCs.
 	pretty    bool                  // Pretty print the JSON output.
 )
 
 func init() {
-	flag.StringVar(&cookie, "cookie", "remoteapi.cookies", "A json encoded cookie file")
 	flag.StringVar(&host, "host", "localhost", "The server to connect")
 	flag.StringVar(&port, "port", "8888", "The port to connect")
 	flag.BoolVar(&debug, "debug", false, "Display debug information")
 	flag.StringVar(&dump, "dump", "", "Datastore kind to export, ignored when loading")
 	flag.Var(&load, "load", "Fixture files to import, ignored when dumping")
 	flag.IntVar(&batchSize, "batch-size", 50, "Size for batch operations")
-	flag.StringVar(&namespace, "namespace", "", "Namespace to use when doing the RPCs")
 	flag.BoolVar(&pretty, "pretty", false, "Pretty print the JSON output")
 }
 
@@ -68,8 +64,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading RemoteContext: %s", err.Error())
 	}
-	// Wrapps the context
-	c = &contextWrapper{c}
 
 	switch {
 	case dump != "":

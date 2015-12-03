@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 	"io"
 	"reflect"
 	"strings"
 	"time"
-
-	"appengine"
-	"appengine/datastore"
 )
 
 const (
@@ -72,24 +72,24 @@ type DumpOptions struct {
 
 // LoadJSON is a convenient wrapper to call Load using a JSON string in memory,
 // wrapped by a strings.Reader. The error result from Load, if any, is returned.
-func LoadJSON(c appengine.Context, s string, o *Options) error {
+func LoadJSON(c context.Context, s string, o *Options) error {
 	return Load(c, strings.NewReader(s), o)
 }
 
 // Load reads the JSON representation of entities from the io.Reader "r",
-// and stores them in the Datastore using the given appengine.Context.
+// and stores them in the Datastore using the given context.Context.
 // The Options parameter allows you to configure how the dump will work.
 // If there is any parsing erros, improper format, or datastore failures
 // during the process, that error is returned and processing stops. The
 // error may be returned after some entities were loaded: there is no
 // parsing cache.
-func Load(c appengine.Context, r io.Reader, o *Options) error {
+func Load(c context.Context, r io.Reader, o *Options) error {
 	entities, err := DecodeEntities(c, r)
 	if err != nil {
 		return err
 	}
 	if len(entities) == 0 {
-		c.Infof("Skipping load of 0 entities")
+		log.Infof(c, "Skipping load of 0 entities")
 		return nil
 	}
 	batchSize := o.BatchSize
@@ -113,10 +113,10 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 		if err != nil {
 			return err
 		}
-		c.Infof("Loaded %d entities ...", len(keys))
+		log.Infof(c, "Loaded %d entities ...", len(keys))
 
 		if o.GetAfterPut {
-			c.Infof("Making a read to force consistency ...")
+			log.Infof(c, "Making a read to force consistency ...")
 			l := make([]Entity, len(keys))
 			err := datastore.GetMulti(c, keys, l)
 			if err != nil {
@@ -133,7 +133,7 @@ func Load(c appengine.Context, r io.Reader, o *Options) error {
 // DumpJSON is a convenient wrapper that captures the generated JSON from Dump
 // in memory, and return it as a string. If Dump returns an error, an empty
 // string and the error are returned.
-func DumpJSON(c appengine.Context, o *Options) (string, error) {
+func DumpJSON(c context.Context, o *Options) (string, error) {
 	var w bytes.Buffer
 	err := Dump(c, &w, o)
 	if err != nil {
@@ -147,7 +147,7 @@ func DumpJSON(c appengine.Context, o *Options) (string, error) {
 // how the dump will run by using the Options parameter. If there is an error
 // generating the output, or writting to the writer, it is returned. This method
 // may return an error after writting bytes to w: the output is not buffered.
-func Dump(c appengine.Context, w io.Writer, o *Options) error {
+func Dump(c context.Context, w io.Writer, o *Options) error {
 	var (
 		comma        = []byte(",")
 		openBracket  = []byte("[")
@@ -170,7 +170,7 @@ func Dump(c appengine.Context, w io.Writer, o *Options) error {
 		k, err := i.Next(&e)
 		e.Key = k
 		if err == datastore.Done {
-			c.Infof("datastore.Done: last=%d, count=%d", last, count)
+			log.Infof(c, "datastore.Done: last=%d, count=%d", last, count)
 			if last == count || count-last < batchSize {
 				break
 			}
@@ -180,7 +180,7 @@ func Dump(c appengine.Context, w io.Writer, o *Options) error {
 			if err != nil {
 				return err
 			}
-			c.Infof("restarting the query: cursor=%v", cur)
+			log.Infof(c, "restarting the query: cursor=%v", cur)
 			i = datastore.NewQuery(o.Kind).Limit(batchSize).Start(cur).Run(c)
 			continue
 		}
@@ -219,7 +219,7 @@ func EncodeEntities(entities []Entity, w io.Writer) error {
 }
 
 // DecodeEntities deserielizes the parameter from a JSON string
-func DecodeEntities(c appengine.Context, r io.Reader) ([]Entity, error) {
+func DecodeEntities(c context.Context, r io.Reader) ([]Entity, error) {
 	a, err := parseJSONArray(r)
 	if err != nil {
 		return nil, err
@@ -276,7 +276,7 @@ func encodeEntity(e Entity, w io.Writer) error {
 }
 
 // decodeEntity decodes the map as an Entity struct.
-func decodeEntity(c appengine.Context, m map[string]interface{}) (*Entity, error) {
+func decodeEntity(c context.Context, m map[string]interface{}) (*Entity, error) {
 	var e Entity
 	var err error
 

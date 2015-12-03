@@ -6,12 +6,12 @@ package bigquerysync
 import (
 	"bytes"
 	"fmt"
-	"log"
+	"golang.org/x/net/context"
 	"sort"
 	"strings"
 
-	"appengine"
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 
 	"ronoaldo.gopkg.net/aetools"
 )
@@ -58,7 +58,7 @@ func (e Errors) Error() string {
 //	}
 //
 // The above sample code ilustrates how to handle the results.
-func SyncKeyRange(c appengine.Context, project, dataset string, start, end *datastore.Key, exclude string) (int, *datastore.Key, error) {
+func SyncKeyRange(c context.Context, project, dataset string, start, end *datastore.Key, exclude string) (int, *datastore.Key, error) {
 	if start == nil {
 		return 0, nil, fmt.Errorf("bigquerysync: invalid nil start")
 	}
@@ -82,13 +82,13 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 		}
 		if err != nil {
 			if strings.Contains(err.Error(), "datastore operation timed out") {
-				c.Infof("Continuing from cursor '%s', due to error %s", cur, err.Error())
+				log.Infof(c, "Continuing from cursor '%s', due to error %s", cur, err.Error())
 				q := createQuery(start, end, cur)
 				it = q.Run(c)
 				continue
 			}
 			errors = append(errors, err)
-			c.Warningf("Error loading next entity: %s", err.Error())
+			log.Warningf(c, "Error loading next entity: %s", err.Error())
 			break
 		}
 
@@ -98,7 +98,7 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 		cur, err = it.Cursor()
 		if err != nil {
 			errors = append(errors, err)
-			c.Warningf("Error fething cursor: %s", err.Error())
+			log.Warningf(c, "Error fething cursor: %s", err.Error())
 		}
 
 		if len(errors) > MaxErrorsPerSync {
@@ -118,7 +118,7 @@ func SyncKeyRange(c appengine.Context, project, dataset string, start, end *data
 		if i >= j {
 			break
 		}
-		c.Infof("Ingesting %d entities into %s:%s [%d:%d]", len(buff), project, dataset, i, j)
+		log.Infof(c, "Ingesting %d entities into %s:%s [%d:%d]", len(buff), project, dataset, i, j)
 		err := IngestToBigQuery(c, project, dataset, buff[i:j], exclude)
 		if err != nil {
 			errors = append(errors, err)
@@ -240,7 +240,7 @@ func (b byKey) Less(i, j int) bool { return CompareKeys(b[i], b[j]) == -1 }
 
 // KeyRangesForKind generates a set of KeyRanges, attempting to make them uniformly
 // distributed by using the __scatter__ property implementation.
-func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
+func KeyRangesForKind(c context.Context, kind string) []KeyRange {
 	// TODO(ronoaldo): compute rangeLen using datastore statistics
 	rangeLen := 64
 	// Start key is the first entity key
@@ -251,7 +251,7 @@ func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
 		// No entities found, return empty range
 		return []KeyRange{}
 	}
-	c.Infof("Found start key %s", start)
+	log.Infof(c, "Found start key %s", start)
 	// Find scatters to build ranges
 	q := datastore.NewQuery(kind).Order(ScatterProperty).KeysOnly().Limit(rangeLen)
 	keys := make([]*datastore.Key, 0, rangeLen)
@@ -261,7 +261,7 @@ func KeyRangesForKind(c appengine.Context, kind string) []KeyRange {
 			break
 		}
 		if err != nil {
-			c.Infof("Error iterating over scatters: %s", err.Error())
+			log.Infof(c, "Error iterating over scatters: %s", err.Error())
 			break
 		}
 		keys = append(keys, k)
@@ -313,8 +313,6 @@ func decodeKey(k string) *datastore.Key {
 	}
 	key, err := datastore.DecodeKey(k)
 	if err != nil {
-		// TODO(ronoaldo): log to gae console
-		log.Printf("Unable to decode key %s: %s", k, err.Error())
 		return nil
 	}
 	return key

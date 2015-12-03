@@ -9,8 +9,8 @@ import (
 	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
-	"appengine/aetest"
-	"appengine/datastore"
+	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/datastore"
 )
 
 func init() {
@@ -92,11 +92,11 @@ func TestSyncInvalidKeyIntervals(t *testing.T) {
 }
 
 func TestKeyRangeForKind(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 	// No entities: empty range
 	ranges := bigquerysync.KeyRangesForKind(c, "RangeTest")
 	if len(ranges) != 0 {
@@ -168,11 +168,11 @@ func TestKeyRangeForKind(t *testing.T) {
 }
 
 func TestCompareKeys(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	A1 := datastore.NewKey(c, "A", "", 1, nil)
 	A2 := datastore.NewKey(c, "A", "", 2, nil)

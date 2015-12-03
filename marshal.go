@@ -8,14 +8,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"appengine"
-	"appengine/datastore"
 )
 
 // MarshalJSON implements the json.Marshaller interface by dumping
@@ -196,7 +196,7 @@ func encodeKey(k *datastore.Key) []interface{} {
 	return r
 }
 
-func decodeKey(c appengine.Context, v interface{}) (*datastore.Key, error) {
+func decodeKey(c context.Context, v interface{}) (*datastore.Key, error) {
 	var result, ancestor *datastore.Key
 	p, ok := v.([]interface{})
 	if !ok {
@@ -236,7 +236,7 @@ func toMap(t string, noIndex bool, v interface{}) map[string]interface{} {
 	return m
 }
 
-func decodeProperty(c appengine.Context, k string, v interface{}, e *Entity) error {
+func decodeProperty(c context.Context, k string, v interface{}, e *Entity) error {
 	var p datastore.Property
 	p.Name = k
 

@@ -4,27 +4,32 @@
 package bigquerysync_test
 
 import (
-	"appengine/aetest"
-	"code.google.com/p/google-api-go-client/bigquery/v2"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/context"
+	bigquery "google.golang.org/api/bigquery/v2"
+	"google.golang.org/appengine/aetest"
+	"ronoaldo.gopkg.net/aetools"
+	"ronoaldo.gopkg.net/aetools/bigquerysync"
 )
 
 type TestContext interface {
-	aetest.Context
+	context.Context
+
 	TestServer() *httptest.Server
+	Close() error
 }
 
 type testContext struct {
-	aetest.Context
+	context.Context
+	clean  func()
 	server *httptest.Server
 }
 
@@ -33,20 +38,20 @@ func (t *testContext) TestServer() *httptest.Server {
 }
 
 func (t *testContext) Close() error {
-	defer t.Context.Close()
+	defer t.clean()
 	t.server.Close()
 	return nil
 }
 
 func SetupEnv(t *testing.T) TestContext {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	err = aetools.Load(c, strings.NewReader(SampleEntities), aetools.LoadSync)
 	if err != nil {
-		c.Close()
+		defer clean()
 		t.Fatal(err)
 	}
 
@@ -61,7 +66,11 @@ func SetupEnv(t *testing.T) TestContext {
 	// TODO(ronoaldo): enable parallel testing.
 	bigquerysync.InsertAllURL = fmt.Sprintf("%s/%%s/%%s/%%s", s.URL)
 
-	tc := &testContext{c, s}
+	tc := &testContext{
+		Context: c,
+		clean:   clean,
+		server:  s,
+	}
 	return tc
 }
 

@@ -8,11 +8,10 @@ import (
 	"testing"
 
 	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/aestubs"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"
 
-	"appengine/aetest"
-	"appengine/datastore"
+	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/datastore"
 )
 
 var datastoreStats = `
@@ -67,9 +66,13 @@ var datastoreStats = `
 }]`
 
 func TestDecodeStatByProperty(t *testing.T) {
-	c := aestubs.NewContext(nil, t)
+	c, clean, err := aetest.NewContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clean()
 
-	err := aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
+	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 	if err != nil {
 		t.Log("Unable to load fixtures")
 		t.Fatal(err)
@@ -107,11 +110,11 @@ func TestDecodeStatByProperty(t *testing.T) {
 }
 
 func TestInferTableSchema(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 	err = aetools.LoadJSON(c, datastoreStats, aetools.LoadSync)
 
 	s, err := bigquerysync.SchemaForKind(c, "Account")
