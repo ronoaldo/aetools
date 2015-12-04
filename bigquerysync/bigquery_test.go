@@ -6,7 +6,7 @@ package bigquerysync_test
 import (
 	"testing"
 
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
 
 	"ronoaldo.gopkg.net/aetools"
 	"ronoaldo.gopkg.net/aetools/bigquerysync"

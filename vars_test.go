@@ -4,7 +4,7 @@
 package aetools
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 // fixture is a sample output that describes the main expected

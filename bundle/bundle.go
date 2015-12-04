@@ -4,17 +4,19 @@
 package bundle
 
 import (
-	"appengine"
-	"appengine/datastore"
-	"appengine/taskqueue"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
 	"strings"
+
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/taskqueue"
+	"ronoaldo.gopkg.net/aetools/bigquerysync"
 )
 
 func init() {
@@ -185,7 +187,7 @@ func SyncKindHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // scheduleRangeSync schedule a new run of a key range sync using appengine/taskqueue.
-func scheduleRangeSync(c appengine.Context, w http.ResponseWriter, start, end *datastore.Key, proj, dataset, exclude, queue string) error {
+func scheduleRangeSync(c context.Context, w http.ResponseWriter, start, end *datastore.Key, proj, dataset, exclude, queue string) error {
 	queue = strings.Trim(queue, " \n\t")
 	path := "/bq/sync/range?startKey=%s&endKey=%s&project=%s&dataset=%s&exclude=%s&queue=%s"
 	url := fmt.Sprintf(path, encodeKey(start), encodeKey(end), proj, dataset, exclude, queue)
@@ -202,15 +204,15 @@ func scheduleRangeSync(c appengine.Context, w http.ResponseWriter, start, end *d
 }
 
 // infof prints info to w and log info to c.
-func infof(c appengine.Context, w io.Writer, s string, args ...interface{}) {
-	c.Infof(s, args...)
+func infof(c context.Context, w io.Writer, s string, args ...interface{}) {
+	log.Infof(c, s, args...)
 	fmt.Fprintf(w, s, args...)
 }
 
 // errorf prints info to w, marking it as an http error of status
 // given by code,and logs error in c.
-func errorf(c appengine.Context, w http.ResponseWriter, code int, s string, args ...interface{}) {
-	c.Errorf(s, args...)
+func errorf(c context.Context, w http.ResponseWriter, code int, s string, args ...interface{}) {
+	log.Errorf(c, s, args...)
 	http.Error(w, fmt.Sprintf(s, args...), code)
 }
 
@@ -222,8 +224,6 @@ func decodeKey(k string) *datastore.Key {
 	}
 	key, err := datastore.DecodeKey(k)
 	if err != nil {
-		// TODO(ronoaldo): log to gae console
-		log.Printf("Unable to decode key %s: %s", k, err.Error())
 		return nil
 	}
 	return key
@@ -265,6 +265,6 @@ func (t *page) Context() map[string]interface{} {
 
 func (t *page) ServerError(err error) {
 	c := appengine.NewContext(t.req)
-	c.Errorf("Error: %s", err.Error())
+	log.Errorf(c, "Error: %s", err.Error())
 	http.Error(t.resp, "Error: "+err.Error(), http.StatusInternalServerError)
 }

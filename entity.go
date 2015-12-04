@@ -4,7 +4,7 @@
 package aetools
 
 import (
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
 )
 
 // Entity is a small wrapper around datastore.PropertyList
@@ -16,14 +16,14 @@ type Entity struct {
 
 // Load decodes all properties into Entity.Propertioes object,
 // implementing the datastore.PropertyLoadSaver interface.
-func (e *Entity) Load(c <-chan datastore.Property) error {
-	return e.Properties.Load(c)
+func (e *Entity) Load(p []datastore.Property) error {
+	return e.Properties.Load(p)
 }
 
 // Save encodes all properties from Entity.Properties object,
 // implmenting the datastore.PropetyLoadSaver interface.
-func (e *Entity) Save(c chan<- datastore.Property) error {
-	return e.Properties.Save(c)
+func (e *Entity) Save() ([]datastore.Property, error) {
+	return e.Properties.Save()
 }
 
 // Add append p to the Properties attribute.

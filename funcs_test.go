@@ -6,15 +6,13 @@ package aetools
 import (
 	"bytes"
 	"fmt"
+	"github.com/drhodes/golorem"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/datastore"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/drhodes/golorem"
-
-	"appengine"
-	"appengine/aetest"
-	"appengine/datastore"
 )
 
 type Profile struct {
@@ -32,11 +30,11 @@ func TestEndToEndTest(t *testing.T) {
 		t.Skip()
 	}
 
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	err = createSampleEntities(c, 3)
 	if err != nil {
@@ -60,11 +58,11 @@ func TestEndToEndTest(t *testing.T) {
 }
 
 func TestEncodeEntities(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	parent := datastore.NewKey(c, "Parent", "parent-1", 0, nil)
 
@@ -120,11 +118,11 @@ func TestEncodeEntities(t *testing.T) {
 }
 
 func TestDecodeEntities(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	r, err := DecodeEntities(c, bytes.NewReader(fixture))
 	if err != nil {
@@ -142,11 +140,11 @@ func TestDecodeEntities(t *testing.T) {
 }
 
 func TestLoadFixtures(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	err = Load(c, bytes.NewReader(fixture), &Options{GetAfterPut: true})
 	if err != nil {
@@ -189,11 +187,11 @@ func TestLoadFixtures(t *testing.T) {
 }
 
 func TestBatchSizeOnDump(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	for _, i := range []int{10, 20, 50, 99, 100, 101} {
 		t.Logf("Testing %d entities ...", i)
@@ -222,11 +220,11 @@ func TestBatchSizeOnDump(t *testing.T) {
 }
 
 func TestBatchSizeWhenLoading(t *testing.T) {
-	c, err := aetest.NewContext(nil)
+	c, clean, err := aetest.NewContext()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer clean()
 
 	// Zero-case check for load bounds
 	if err := Load(c, strings.NewReader("[]"), LoadSync); err != nil {
@@ -260,7 +258,7 @@ func TestBatchSizeWhenLoading(t *testing.T) {
 	}
 }
 
-func createSampleEntities(c appengine.Context, size int) error {
+func createSampleEntities(c context.Context, size int) error {
 	buff := make([]Entity, 0, 10)
 	keys := make([]*datastore.Key, 0, 10)
 	for i := 1; i <= size; i++ {
