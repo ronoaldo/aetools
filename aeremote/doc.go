@@ -14,18 +14,18 @@ limitations under the License.
 
 /*
 Command aeremote is a simple Remote API client to download and upload
-data to your app.
+data on Google App Engine Datastore.
 
-Dumping entities as fixtures
+Dumping entities from development server
 
-One use case is to export your local datastore as a fixture file to be
-reused as a fixture in future tests, or to bootstrap your app locally.
-This can be done by using the --dump option, followed by the datastore
-kind to export.
+One use case is to export your local datastore as a JSON file to be
+reused as a fixture in automated tests, or to bootstrap your app for
+local development. This can be done by using the --dump option,
+followed by the datastore kind to export:
 
 	aeremote --dump MyKind > MyKind.json
 
-Loading fixtures in the datastore
+Loading fixtures in the development server
 
 To load a previously exported fixture back into the datastore, to restore
 a previous exported state or to bootstrap your app, you can use the --load
@@ -40,35 +40,34 @@ servers. We recomend and have tested this only for Q.A. environments, and
 we don't recomend this for production use unless you really know what you're
 doing.
 
-Since the appspot.com servers requires an authenticated request, you must
-configure a local file with the cookies from a browser session. To acomplish
-this, one can login into your app and access the remote_api handler at:
+Since the appspot.com servers requires an authenticated request, you need
+to provide valid credentials. aeremote will authorize the requests using
+the Google Default Application Credentials mechanism [1].
 
-	https://your-app-id.appspot.com/_ah/remote_api
+There are several ways to acomplish this, and the easier way is to use
+the Google Cloud SDK [2]. Onc you install the SDK on your computer,
+run `gcloud auth login` command to authenticate, then just make a
+aeremote call using the --host and --port parameters:
 
-You may be redirected to the Google Accounts login page, if needed. Once
-you're logged in, you can see a message like this:
+	aeremote -host your-app-id.appspot.com -port 443 --dump MyKind > MyKind.json
 
-	This request did not contain a necessary header
+NOTE: for this to work, your remote application must have an updated version
+of the Remote API handler, in any of the supported runtimes. If you have
+deployed your app a long time ago, you may need to redeploy if aeremote
+outputs a login page as an error message.
 
-In that case, you have a valid cookie in your browser session, named SACSID.
-Using your browser development tools or the Web Developer extension, copy the
-cookie value and save it on a file in the format:
+CAUTION: if you --load data using aeremote into your appspot.com application,
+be aware that this is a raw datastore operation, and any datastore logic that
+you have is not executed, i.e., if you have entitites annotated with
+"@PrePersist" in Java, aeremote does not execute any of that logic.
 
-	[
-	  {
-	    "Name": "SACSID",
-	    "Value": "AJKiYc....",
-	    "Hostname": "your-app-id.appspot.com"
-	  }
-	]
 
-Save that file on a secure place, and pass the parameters -host, -port and
--cookie to aeremote:
+References
 
-	aeremote -host your-app-id.appspot.com -port 443 -cookie cookiejar.json
+Follow these links to learn more about the authentication mecanisms:
 
-CAUTION: This will perform a dump or load with the specified appid datastore,
-and there is no way to rollback the operation.
+	[1] https://developers.google.com/identity/protocols/application-default-credentials
+	[2] https://cloud.google.com/sdk/
+
 */
-package main // import "ronoaldo.gopkg.net/aetools/aeremote"
+package main
