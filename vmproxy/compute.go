@@ -261,6 +261,28 @@ func (vm *VM) PublicIP(c context.Context) string {
 	return vm.ip
 }
 
+// IsRunning returns true if the instance is running
+func (vm *VM) IsRunning(c context.Context) bool {
+	// Use cached value if running
+	if !vm.isRunning {
+		project := appengine.AppID(c)
+		service, err := newComputeService(c)
+		if err != nil {
+			log.Errorf(c, "Error initializing service: %v", err)
+			return false
+		}
+		// Fetch instance IP address
+		instance, err := service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do()
+		if err != nil {
+			log.Errorf(c, "Unable to fetch instance to determine state: %v", err)
+			return false
+		}
+		// Cache the value so we don't make a new RPC every request
+		vm.isRunning = instance.Status == "RUNNING"
+	}
+	return vm.isRunning
+}
+
 // findNatIP look up the instance access configurations and returns the
 // public NAT IP, if one is found. An empty string is returned if the
 // instance or the access configuration is nil, or if no public address

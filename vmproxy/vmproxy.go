@@ -103,6 +103,9 @@ type VM struct {
 
 	// Instance IP address, filled once the instance boots.
 	ip string
+
+	// isRunning caches the running state check of the VM.
+	isRunning bool
 }
 
 // ServeHTTP handles the HTTP request, by forwarding it to the target VM.
@@ -110,7 +113,7 @@ type VM struct {
 func (vm *VM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	log.Debugf(c, "Servicing a new request with VM Proxy %s/%s", vm.Instance.Name, vm.ip)
-	if !vm.isRunning(c) {
+	if !vm.IsRunning(c) {
 		log.Debugf(c, "VM not running, starting a new one ...")
 		if err := vm.Start(c); err != nil {
 			log.Errorf(c, "Error starting VM: %v", err)
@@ -160,10 +163,4 @@ func (vm *VM) healthCheckURL() *url.URL {
 		Host:   fmt.Sprintf("%s:%d", vm.ip, vm.Port),
 		Path:   vm.HealthPath,
 	}
-}
-
-// isRunning checks if the instance state is running.
-func (vm *VM) isRunning(c context.Context) bool {
-	// TODO(ronoaldo): we need a smarter way to check this...
-	return vm.PublicIP(c) != ""
 }
