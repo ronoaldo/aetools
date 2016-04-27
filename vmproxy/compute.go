@@ -132,8 +132,7 @@ func (vm *VM) Start(c context.Context) (err error) {
 
 	// Check if instance exists.
 	log.Debugf(c, "Checkingif instance: %#v exists...", vm.Instance.Name)
-	instance, err = service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do()
-	if err != nil {
+	if _, err = service.Instances.Get(project, vm.Instance.Zone, vm.Instance.Name).Do(); err != nil {
 		log.Debugf(c, "Instance does not exists (%#v)", err)
 		log.Debugf(c, "Launching new instance: %#v", instance)
 		op, err := service.Instances.Insert(project, vm.Instance.Zone, instance).Do()
