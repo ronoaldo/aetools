@@ -1,7 +1,6 @@
 # aetools
 
-[![Codeship Status for ronoaldo/aetools](https://www.codeship.io/projects/3ad39d70-353f-0133-9f6b-06da35d24f74/status?branch=master)](https://www.codeship.io/projects/100726)
-
+[![Build Status](https://travis-ci.org/ronoaldo/aetools.svg?branch=master)](https://travis-ci.org/ronoaldo/aetools)
 [![GoDoc](https://godoc.org/ronoaldo.gopkg.net/aetools?status.png)](https://godoc.org/ronoaldo.gopkg.net/aetools)
 
     import "ronoaldo.gopkg.net/aetools"
