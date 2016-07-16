@@ -65,6 +65,9 @@ func SetupEnv(t *testing.T) TestContext {
 
 	// TODO(ronoaldo): enable parallel testing.
 	bigquerysync.InsertAllURL = fmt.Sprintf("%s/%%s/%%s/%%s", s.URL)
+	bigquerysync.NewClient = func(c context.Context) (*http.Client, error) {
+		return &http.Client{}, nil
+	}
 
 	tc := &testContext{
 		Context: c,
