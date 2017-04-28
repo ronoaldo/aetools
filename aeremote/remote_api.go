@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-var remoteApiScopes = []string{
+var remoteAPIScopes = []string{
 	"https://www.googleapis.com/auth/appengine.apis",
 	"https://www.googleapis.com/auth/userinfo.email",
 	"https://www.googleapis.com/auth/cloud.platform",
@@ -28,7 +28,7 @@ func newClient() (*http.Client, error) {
 		return hc, nil
 	}
 	log.Printf("Autodetecting credentials do use ...")
-	hc, err := google.DefaultClient(context.Background(), remoteApiScopes...)
+	hc, err := google.DefaultClient(context.Background(), remoteAPIScopes...)
 	if hc != nil {
 		hc.Transport = &transport{hc.Transport}
 	}

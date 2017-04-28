@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	// StatKind is the kind used to fetch datastore statistics
 	StatKind = "__Stat_Kind__"
 )
 
@@ -26,6 +27,7 @@ func (s *StringList) String() string {
 	return fmt.Sprint(*s)
 }
 
+// Set appends a value to the StringList object.
 func (s *StringList) Set(value string) error {
 	*s = append(*s, value)
 	return nil
