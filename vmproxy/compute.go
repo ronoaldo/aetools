@@ -278,6 +278,7 @@ func (vm *VM) IsRunning(c context.Context) bool {
 		}
 		// Cache the value so we don't make a new RPC every request
 		vm.isRunning = instance.Status == "RUNNING"
+		vm.ip = findNatIP(c, instance)
 	}
 	return vm.isRunning
 }
