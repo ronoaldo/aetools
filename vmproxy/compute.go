@@ -5,6 +5,10 @@ package vmproxy
 
 import (
 	"errors"
+	"net"
+	"net/http"
+	"time"
+
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -13,9 +17,6 @@ import (
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/socket"
 	"google.golang.org/appengine/urlfetch"
-	"net"
-	"net/http"
-	"time"
 )
 
 var (
@@ -180,7 +181,14 @@ func (vm *VM) Start(c context.Context) (err error) {
 	count := 1
 	for {
 		log.Debugf(c, "Checking instance heath (attempt #%d)...", count)
-		resp, err := client.Get(healthCheck.String())
+		req, err := http.NewRequest("GET", healthCheck.String(), nil)
+		if err != nil {
+			return err
+		}
+		if vm.Hostname != "" {
+			req.Header.Set("Host", vm.Hostname)
+		}
+		resp, err := client.Do(req)
 		if err == nil {
 			resp.Body.Close()
 			log.Debugf(c, "%d: %s", resp.StatusCode, resp.Status)

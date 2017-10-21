@@ -6,14 +6,15 @@ package vmproxy
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	stdlog "log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 )
 
 const (
@@ -98,6 +99,9 @@ type VM struct {
 	// Path used to check if the VM is ready to serve traffic.
 	// Defaults to Path.
 	HealthPath string
+	// Hostname is sent as a Host: header, if specified,
+	// for both health-check and proxy forwarding.
+	Hostname string
 	// Port to forward requests to. Defaults to 80 if 0.
 	Port int
 
@@ -128,6 +132,10 @@ func (vm *VM) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // forward creates a reverse proxy and serves the HTTP directly to it.
 func (vm *VM) forward(c context.Context, w http.ResponseWriter, r *http.Request) {
 	log.Debugf(c, "Forwarding request to instance at %s ...", vm.endpoint())
+	if vm.Hostname != "" {
+		log.Debugf(c, "Using Host header value: %v", vm.Hostname)
+		r.Header.Set("Host", vm.Hostname)
+	}
 	proxy := httputil.NewSingleHostReverseProxy(vm.endpoint())
 	proxy.Transport = newSocketTransport(c)
 	var buff bytes.Buffer
