@@ -8,13 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
 	"io"
 	"reflect"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 const (
@@ -163,8 +164,8 @@ func Dump(c context.Context, w io.Writer, o *Options) error {
 	if batchSize <= 0 {
 		batchSize = 100
 	}
-
-	q := datastore.NewQuery(o.Kind).Limit(batchSize)
+	log.Infof(c, "dump: using batch size %d, kind %s", batchSize, o.Kind)
+	q := datastore.NewQuery(o.Kind).Order("__key__").Limit(batchSize)
 	for i := q.Run(c); ; {
 		var e Entity
 		k, err := i.Next(&e)
@@ -181,7 +182,7 @@ func Dump(c context.Context, w io.Writer, o *Options) error {
 				return err
 			}
 			log.Infof(c, "restarting the query: cursor=%v", cur)
-			i = datastore.NewQuery(o.Kind).Limit(batchSize).Start(cur).Run(c)
+			i = datastore.NewQuery(o.Kind).Order("__key__").Limit(batchSize).Start(cur).Run(c)
 			continue
 		}
 		if err != nil {
