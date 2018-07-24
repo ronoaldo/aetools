@@ -39,6 +39,7 @@ var (
 	port      string                // Port to connect to.
 	debug     bool                  // Enable/disable debug information.
 	dump      string                // Kind to export
+	key       string                // Key of entity to export
 	load      = make(StringList, 0) // StringList to load data into.
 	batchSize int                   // Size for batch operations.
 	pretty    bool                  // Pretty print the JSON output.
@@ -49,6 +50,7 @@ func init() {
 	flag.StringVar(&port, "port", "8888", "The port to connect")
 	flag.BoolVar(&debug, "debug", false, "Display debug information")
 	flag.StringVar(&dump, "dump", "", "Datastore kind to export, ignored when loading")
+	flag.StringVar(&key, "dump-entity", "", "Key String of entity to export")
 	flag.Var(&load, "load", "Fixture files to import, ignored when dumping")
 	flag.IntVar(&batchSize, "batch-size", 50, "Size for batch operations")
 	flag.BoolVar(&pretty, "pretty", false, "Pretty print the JSON output")
@@ -89,6 +91,12 @@ func main() {
 				log.Printf("Error loading fixture %s: %s\n", f, err.Error())
 			}
 			fd.Close()
+		}
+	case key != "":
+		log.Printf("Dumping entity key %s\n", key)
+		err = aetools.DumpEntity(c, os.Stdout, key, &aetools.Options{Kind: dump, PrettyPrint: pretty, BatchSize: batchSize})
+		if err != nil {
+			log.Fatal(err)
 		}
 	default:
 		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: StatKind, PrettyPrint: true, BatchSize: batchSize})

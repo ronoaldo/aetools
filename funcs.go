@@ -208,6 +208,44 @@ func Dump(c context.Context, w io.Writer, o *Options) error {
 	return nil
 }
 
+//DumpEntity export a single entity from the context
+func DumpEntity(c context.Context, w io.Writer, keyString string, o *Options) error {
+	var (
+		openBracket  = []byte("[")
+		closeBracket = []byte("]")
+		indent       = "  "
+	)
+
+	w.Write(openBracket)
+
+	key, err := datastore.DecodeKey(keyString)
+	if err != nil {
+		return err
+	}
+	log.Infof(c, "dump: using decoded key: %#v", key)
+
+	var e Entity
+	if err := datastore.Get(c, key, &e); err != nil {
+		return err
+	}
+	e.Key = key
+
+	var b []byte
+	if o.PrettyPrint {
+		b, err = json.MarshalIndent(&e, "", indent)
+	} else {
+		b, err = json.Marshal(&e)
+	}
+	if err != nil {
+		return err
+	}
+
+	w.Write(b)
+	w.Write(closeBracket)
+
+	return nil
+}
+
 // EncodeEntities serializes the parameter into a JSON string.
 func EncodeEntities(entities []Entity, w io.Writer) error {
 	for i, e := range entities {
