@@ -70,7 +70,7 @@ func main() {
 	switch {
 	case dump != "":
 		log.Printf("Dumping entities of kind %s...\n", dump)
-		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: dump, PrettyPrint: pretty})
+		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: dump, PrettyPrint: pretty, BatchSize: batchSize})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -91,7 +91,7 @@ func main() {
 			fd.Close()
 		}
 	default:
-		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: StatKind, PrettyPrint: true})
+		err = aetools.Dump(c, os.Stdout, &aetools.Options{Kind: StatKind, PrettyPrint: true, BatchSize: batchSize})
 		if err != nil {
 			log.Fatal(err)
 		}
