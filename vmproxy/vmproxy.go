@@ -134,7 +134,8 @@ func (vm *VM) forward(c context.Context, w http.ResponseWriter, r *http.Request)
 	log.Debugf(c, "Forwarding request to instance at %s ...", vm.endpoint())
 	if vm.Hostname != "" {
 		log.Debugf(c, "Using Host header value: %v", vm.Hostname)
-		r.Header.Set("Host", vm.Hostname)
+		r.Header.Del("Host")
+		r.Host = vm.Hostname
 	}
 	proxy := httputil.NewSingleHostReverseProxy(vm.endpoint())
 	proxy.Transport = newSocketTransport(c)
@@ -142,7 +143,7 @@ func (vm *VM) forward(c context.Context, w http.ResponseWriter, r *http.Request)
 	proxy.ErrorLog = stdlog.New(&buff, "[proxy] ", stdlog.LstdFlags|stdlog.Lshortfile)
 	proxy.ServeHTTP(w, r)
 	if buff.String() != "" {
-		// TODO:(ronoaldo) diplay the upstream error to the user, some how.
+		// TODO:(ronoaldo) diplay the upstream error to the user, somehow.
 		log.Errorf(c, buff.String())
 	}
 }

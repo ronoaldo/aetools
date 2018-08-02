@@ -186,7 +186,8 @@ func (vm *VM) Start(c context.Context) (err error) {
 			return err
 		}
 		if vm.Hostname != "" {
-			req.Header.Set("Host", vm.Hostname)
+			req.Header.Del("Host")
+			req.Host = vm.Hostname
 		}
 		resp, err := client.Do(req)
 		if err == nil {
