@@ -95,4 +95,4 @@ References
 	[1] https://cloud.google.com/appengine/docs/managed-vms/
 	[2] https://cloud.google.com/appengine/docs/go/modules/
 */
-package vmproxy // import "ronoaldo.gopkg.net/aetools/vmproxy"
+package vmproxy // import "github.com/ronoaldo/aetools/vmproxy"

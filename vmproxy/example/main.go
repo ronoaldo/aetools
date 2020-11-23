@@ -7,7 +7,7 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"net/http"
-	"ronoaldo.gopkg.net/aetools/vmproxy"
+	"github.com/ronoaldo/aetools/vmproxy"
 	"sync"
 )
 

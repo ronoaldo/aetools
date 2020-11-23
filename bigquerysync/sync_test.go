@@ -6,8 +6,8 @@ package bigquerysync_test
 import (
 	"testing"
 
-	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
+	"github.com/ronoaldo/aetools"
+	"github.com/ronoaldo/aetools/bigquerysync"
 
 	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/datastore"
@@ -146,7 +146,7 @@ func TestKeyRangeForKind(t *testing.T) {
 					t.Errorf("Unexpected end at range %d: %#v, expected nil", i, r.End)
 				}
 			} else if r.End == nil {
-				t.Errorf("Unexpected nil end at range %d, expected %d", i, r.End, e.End)
+				t.Errorf("Unexpected nil end at range %d: %#v, expected %v", i, r.End, e.End)
 			} else if r.End.IntID() != e.End {
 				t.Errorf("Unexpected end at range %d: %#v, expected %d", i, r.End.IntID(), e.End)
 			}

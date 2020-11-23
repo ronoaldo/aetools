@@ -16,7 +16,7 @@ import (
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
+	"github.com/ronoaldo/aetools/bigquerysync"
 )
 
 func init() {
@@ -117,7 +117,7 @@ func SyncEntityHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p == "" || d == "" {
-		errorf(c, w, http.StatusBadRequest, "Invalid project/dataset: %s/%d", p, d)
+		errorf(c, w, http.StatusBadRequest, "Invalid project/dataset: %s/%s", p, d)
 		return
 	}
 	tpl := page{resp: w, req: r}

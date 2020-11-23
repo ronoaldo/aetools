@@ -16,8 +16,8 @@ import (
 	"golang.org/x/net/context"
 	bigquery "google.golang.org/api/bigquery/v2"
 	"google.golang.org/appengine/aetest"
-	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
+	"github.com/ronoaldo/aetools"
+	"github.com/ronoaldo/aetools/bigquerysync"
 )
 
 type TestContext interface {

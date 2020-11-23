@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/appengine/datastore"
 
-	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
+	"github.com/ronoaldo/aetools"
+	"github.com/ronoaldo/aetools/bigquerysync"
 )
 
 func TestIngestToBigQuery(t *testing.T) {

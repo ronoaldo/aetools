@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"ronoaldo.gopkg.net/aetools"
-	"ronoaldo.gopkg.net/aetools/bigquerysync"
+	"github.com/ronoaldo/aetools"
+	"github.com/ronoaldo/aetools/bigquerysync"
 
 	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/datastore"

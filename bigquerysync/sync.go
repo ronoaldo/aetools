@@ -13,7 +13,7 @@ import (
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"ronoaldo.gopkg.net/aetools"
+	"github.com/ronoaldo/aetools"
 )
 
 const (

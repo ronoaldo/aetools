@@ -20,4 +20,4 @@ SDK for Go:
 If you want this to be outside de default module, you can change the app.yaml
 to specify the desired version.
 */
-package bundle // import "ronoaldo.gopkg.net/aetools/bundle"
+package bundle // import "github.com/ronoaldo/aetools/bundle"

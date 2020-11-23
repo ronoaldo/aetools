@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/appengine/remote_api"
 
-	"ronoaldo.gopkg.net/aetools"
+	"github.com/ronoaldo/aetools"
 )
 
 const (

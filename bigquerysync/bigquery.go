@@ -15,7 +15,7 @@ import (
 	"google.golang.org/appengine/log"
 	"net/http"
 	"regexp"
-	"ronoaldo.gopkg.net/aetools"
+	"github.com/ronoaldo/aetools"
 	"strings"
 	"time"
 )
